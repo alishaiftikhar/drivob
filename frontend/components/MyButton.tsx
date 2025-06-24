@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 30,
     shadowColor: Color.text,          
-    shadowOffset: { width: 2, height: 5 },
+    shadowOffset: { width: 4, height: 7 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 10,
