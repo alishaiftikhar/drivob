@@ -8,44 +8,36 @@ import {
   Keyboard,
   Alert,
 } from 'react-native';
-import BackgroundDesign from '@/components/Background Design'; 
-import MyButton from '@/components/MyButton'; 
+import BackgroundDesign from '@/components/Background Design';
+import MyButton from '@/components/MyButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Colors from '@/constants/Color'; 
-import {
-  validateEmail,
-  validatePassword,
-  validateConfirmPassword,
-} from '@/components/Validation'; 
+import Colors from '@/constants/Color';
+import { validateEmail, validatePassword } from '@/components/Validation';
 
-const Signup = () => {
+const Login = () => {
   const router = useRouter();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignUp = () => {
+  const handleLogin = () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
-    const confirmPasswordError = validateConfirmPassword(password, confirmPassword);
 
-    if (emailError || passwordError || confirmPasswordError) {
-      Alert.alert(
-        'Validation Error',
-        `${emailError}\n${passwordError}\n${confirmPasswordError}`
-      );
+    if (emailError || passwordError) {
+      Alert.alert('Validation Error', `${emailError}\n${passwordError}`);
       return;
     }
-    router.push({ pathname: '/OTP', params: { email } });
+
+    // Move to next screen
+    router.push('/TypeSelector');
   };
 
   return (
     <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss} style={{ flex: 1 }}>
-      <BackgroundDesign text="Signup">
+      <BackgroundDesign text="Login">
         <View style={styles.formContainer}>
           <TextInput
             placeholder="Enter Email"
@@ -53,8 +45,6 @@ const Signup = () => {
             onChangeText={setEmail}
             style={styles.input}
             placeholderTextColor="#555"
-            keyboardType="email-address"
-            autoCapitalize="none"
           />
 
           <View style={styles.inputWrapper}>
@@ -78,33 +68,24 @@ const Signup = () => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputWrapper}>
-            <TextInput
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              style={styles.input}
-              placeholderTextColor="#555"
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              <Ionicons
-                name={showConfirmPassword ? 'eye' : 'eye-off'}
-                size={24}
-                color={Colors.primary}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.forgotPassword}
+            onPress={() => router.push('/EnterEmail')}
+          >
+            <Text style={styles.forgotText}>Forget Password?</Text>
+          </TouchableOpacity>
 
           <View style={{ marginTop: 20 }}>
-            <MyButton title="Sign Up" onPress={handleSignUp} />
+            <MyButton title="Login" onPress={handleLogin} />
           </View>
 
-          <TouchableOpacity onPress={() => router.push('/Login')}>
-            <Text style={styles.signupText}>Already have an account? Login</Text>
+          <TouchableOpacity
+            style={styles.signupContainer}
+            onPress={() => router.push('/Signup')}
+          >
+            <Text style={styles.signupText}>
+              Don’t have an account? <Text style={styles.signupLink}>Sign Up</Text>
+            </Text>
           </TouchableOpacity>
         </View>
       </BackgroundDesign>
@@ -112,7 +93,7 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default Login;
 
 const styles = StyleSheet.create({
   formContainer: {
@@ -142,10 +123,25 @@ const styles = StyleSheet.create({
     right: 20,
     top: 20,
   },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginRight: 35,
+    marginTop: 5,
+  },
+  forgotText: {
+    color: Colors.primary,
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  signupContainer: {
+    marginTop: 30,
+  },
   signupText: {
-    marginTop: 20,
     color: Colors.primary,
     fontSize: 16,
+  },
+  signupLink: {
+    fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
 });
