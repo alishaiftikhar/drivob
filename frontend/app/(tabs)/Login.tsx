@@ -2,22 +2,20 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  StyleSheet,
   Keyboard,
-  Alert,
+  StyleSheet,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import BackgroundDesign from '@/components/Background Design';
+import BackgroundOne from '../../components/BackgroundDesign';
+import InputButton from '@/components/Inputbutton';
 import MyButton from '@/components/MyButton';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import Colors from '@/constants/Color';
+import { useRouter } from 'expo-router';
 import { validateEmail, validatePassword } from '@/components/Validation';
 
 const Login = () => {
   const router = useRouter();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,70 +24,58 @@ const Login = () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
 
-    if (emailError || passwordError) {
-      Alert.alert('Validation Error', `${emailError}\n${passwordError}`);
-      return;
-    }
+    if (emailError) return alert(emailError);
+    if (passwordError) return alert(passwordError);
 
-    // Move to next screen
+    // All good → Move to TypeSelector screen
     router.push('/TypeSelector');
   };
 
   return (
-    <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss} style={{ flex: 1 }}>
-      <BackgroundDesign text="Login">
-        <View style={styles.formContainer}>
-          <TextInput
-            placeholder="Enter Email"
-            value={email}
-            onChangeText={setEmail}
-            style={styles.input}
-            placeholderTextColor="#555"
-          />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={{ flex: 1 }}>
+        <BackgroundOne text="Login">
+          <View style={styles.formContainer}>
+            {/* Email Input */}
+            <InputButton
+              placeholder="Enter Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+            />
 
-          <View style={styles.inputWrapper}>
-            <TextInput
+            {/* Password Input */}
+            <InputButton
               placeholder="Password"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              style={styles.input}
-              placeholderTextColor="#555"
+              secure
+              showToggle
+              isSecure={showPassword}
+              onToggle={() => setShowPassword(!showPassword)}
             />
+
+            {/* Forget Password Link */}
             <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
+              onPress={() => router.push('/EnterEmail')}
+              style={styles.forgetContainer}
             >
-              <Ionicons
-                name={showPassword ? 'eye' : 'eye-off'}
-                size={24}
-                color={Colors.primary}
-              />
+              <Text style={styles.forgetText}>Forget Password?</Text>
+            </TouchableOpacity>
+
+            {/* Login Button */}
+            <View style={{ marginTop: 40 }}>
+              <MyButton title="Login" onPress={handleLogin} />
+            </View>
+
+            {/* Signup Link */}
+            <TouchableOpacity onPress={() => router.push('/Signup')}>
+              <Text style={styles.signupText}>Create New Account</Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.forgotPassword}
-            onPress={() => router.push('/EnterEmail')}
-          >
-            <Text style={styles.forgotText}>Forget Password?</Text>
-          </TouchableOpacity>
-
-          <View style={{ marginTop: 20 }}>
-            <MyButton title="Login" onPress={handleLogin} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.signupContainer}
-            onPress={() => router.push('/Signup')}
-          >
-            <Text style={styles.signupText}>
-              Don’t have an account? <Text style={styles.signupLink}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </BackgroundDesign>
-    </TouchableOpacity>
+        </BackgroundOne>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -102,46 +88,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  input: {
-    backgroundColor: 'white',
-    borderColor: Colors.primary,
-    borderWidth: 3,
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    fontSize: 16,
-    color: 'black',
-    width: 300,
-    marginVertical: 10,
-  },
-  inputWrapper: {
-    width: 300,
-    justifyContent: 'center',
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 20,
-    top: 20,
-  },
-  forgotPassword: {
+  forgetContainer: {
     alignSelf: 'flex-end',
-    marginRight: 35,
     marginTop: 5,
+    marginRight: 100,
   },
-  forgotText: {
+  forgetText: {
     color: Colors.primary,
-    fontSize: 14,
+    fontSize: 16,
     textDecorationLine: 'underline',
-  },
-  signupContainer: {
-    marginTop: 30,
   },
   signupText: {
-    color: Colors.primary,
+    marginTop: 20,
     fontSize: 16,
-  },
-  signupLink: {
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });

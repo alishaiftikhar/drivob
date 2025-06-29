@@ -1,7 +1,7 @@
 const Colors = {
   primary: '#001F54',  
   text: '#FFFFFF',     
-  background: '#D3D3D3' 
+  background: '#e6e6e6' 
 };
 
 export default Colors;

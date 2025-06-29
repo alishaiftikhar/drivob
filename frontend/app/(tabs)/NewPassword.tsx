@@ -2,67 +2,56 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Keyboard,
   Alert,
+  Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
 import BackgroundOne from '../../components/BackgroundDesign';
-import MyButton from '../../components/MyButton';
-import { useRouter } from 'expo-router';
-
 import Colors from '@/constants/Color';
+import MyButton from '@/components/MyButton';
+import InputButton from '@/components/Inputbutton';
+import { useRouter } from 'expo-router';
 import {
-  validateEmail,
   validatePassword,
   validateConfirmPassword,
 } from '@/components/Validation';
 
-import InputButton from '@/components/Inputbutton'; // ✅ Custom input component
-
-const Signup = () => {
+const NewPassword = () => {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignUp = () => {
-    const emailError = validateEmail(email);
-    const passwordError = validatePassword(password);
-    const confirmPasswordError = validateConfirmPassword(password, confirmPassword);
+  const handleSubmit = () => {
+    const passwordError = validatePassword(newPassword);
+    const confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword);
 
-    if (emailError) return Alert.alert(emailError);
     if (passwordError) return Alert.alert(passwordError);
     if (confirmPasswordError) return Alert.alert(confirmPasswordError);
 
-    router.push('/OTP');
+    // ✅ All checks passed
+    router.push('/TypeSelector');
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={{ flex: 1 }}>
-        <BackgroundOne text="Signup">
+        <BackgroundOne text="Password">
           <View style={styles.formContainer}>
+            {/* New Password */}
             <InputButton
-              placeholder="Enter Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-
-            <InputButton
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
+              placeholder="Enter New Password"
+              value={newPassword}
+              onChangeText={setNewPassword}
               secure
               showToggle
               isSecure={showPassword}
               onToggle={() => setShowPassword(!showPassword)}
             />
 
+            {/* Confirm Password */}
             <InputButton
               placeholder="Confirm Password"
               value={confirmPassword}
@@ -73,13 +62,10 @@ const Signup = () => {
               onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
             />
 
-            <View style={{ marginTop: 125 }}>
-              <MyButton title="Sign Up" onPress={handleSignUp} />
+            {/* Submit Button */}
+            <View style={{ marginTop: 80 }}>
+              <MyButton title="Submit" onPress={handleSubmit} />
             </View>
-
-            <TouchableOpacity onPress={() => router.push('/Login')}>
-              <Text style={styles.signupText}>Already have an account? Login</Text>
-            </TouchableOpacity>
           </View>
         </BackgroundOne>
       </View>
@@ -87,7 +73,7 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default NewPassword;
 
 const styles = StyleSheet.create({
   formContainer: {
@@ -95,10 +81,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-  },
-  signupText: {
-    marginTop: 20,
-    color: Colors.primary,
-    fontSize: 20,
   },
 });
