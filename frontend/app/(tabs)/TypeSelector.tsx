@@ -13,7 +13,7 @@ const TypeSelector = () => {
         {/* Client Button */}
         <TouchableOpacity
           style={styles.roleButton}
-          onPress={() => router.push('/client/Profile')}
+          onPress={() => router.push('/Client/Profile')}
         >
           <Text style={styles.roleText}>Client</Text>
         </TouchableOpacity>
@@ -21,7 +21,7 @@ const TypeSelector = () => {
         {/* Driver Button */}
         <TouchableOpacity
           style={styles.roleButton}
-          onPress={() => router.push('/driver/Profile')}
+          onPress={() => router.push('/Driver/Profile')}
         >
           <Text style={styles.roleText}>Driver</Text>
         </TouchableOpacity>
