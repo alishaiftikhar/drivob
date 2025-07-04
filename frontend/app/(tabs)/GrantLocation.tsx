@@ -9,13 +9,19 @@ const GrantLocation = () => {
   const router = useRouter();
 
   return (
-    <BackgroundOne text="Location Access">
+    <BackgroundOne text="Location">
       <View style={styles.container}>
-        <Ionicons name="location-outline" size={100} color={Colors.primary} />
+        {/* Branded Icon Container */}
+        <View style={styles.iconWrapper}>
+          <Ionicons name="location-outline" size={150} color={Colors.primary} />
+        </View>
+
+        {/* Title */}
         <Text style={styles.title}>Grant Location Access</Text>
 
+        {/* Branded Button */}
         <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/LiveLocation')}>
-          <Text style={styles.buttonText}> Location</Text>
+          <Text style={styles.buttonText}>Enable Location</Text>
         </TouchableOpacity>
       </View>
     </BackgroundOne>
@@ -29,22 +35,40 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: 30,
+    paddingHorizontal: 20,
+  },
+  iconWrapper: {
+    backgroundColor: 'Colors.primary',
+    padding: 1,
+    borderRadius: 100,
+    elevation: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     color: Colors.primary,
     fontWeight: 'bold',
+    textAlign: 'center',
+    paddingHorizontal: 10,
   },
   button: {
     backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 30,
-    elevation: 4,
+    paddingVertical: 16,
+    paddingHorizontal: 50,
+    borderRadius: 40,
+    elevation: 6,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
   },
   buttonText: {
     color: Colors.text,
     fontSize: 18,
+    fontWeight: 'bold',
   },
 });
