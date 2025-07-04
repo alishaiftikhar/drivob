@@ -1,12 +1,16 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import Color from '@/constants/Color';  
+import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import Color from '@/constants/Color';
 
-const MyButton = (props) => {
-  const { title, onPress } = props;
+interface MyButtonProps {
+  title: string;
+  onPress: () => void;
+  style?: ViewStyle; // Allow custom style from outside
+}
 
+const MyButton = ({ title, onPress, style }: MyButtonProps) => {
   return (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
+    <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
       <Text style={styles.buttonText}>{title}</Text>
     </TouchableOpacity>
   );
@@ -14,18 +18,19 @@ const MyButton = (props) => {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: Color.primary,   
-    paddingHorizontal: 40,
+    backgroundColor: Color.primary,
+    paddingHorizontal: 50,
     paddingVertical: 15,
     borderRadius: 30,
-    shadowColor: Color.text,          
+    shadowColor: Color.text,
     shadowOffset: { width: 4, height: 7 },
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 10,
+    alignSelf: 'center', // Centered by default
   },
   buttonText: {
-    color: Color.text,   
+    color: Color.text,
     fontSize: 22,
     fontWeight: '600',
   },

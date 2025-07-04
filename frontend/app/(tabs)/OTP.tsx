@@ -7,6 +7,9 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import BackgroundOne from '../../components/BackgroundDesign';
 import Colors from '@/constants/Color';
@@ -15,7 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const OTP = () => {
   const router = useRouter();
-  const { next } = useLocalSearchParams(); // 🔐 supports dynamic route redirection
+  const { next } = useLocalSearchParams();
   const [otp, setOtp] = useState(Array(6).fill(''));
   const inputs = useRef<TextInput[]>([]);
 
@@ -29,7 +32,6 @@ const OTP = () => {
     if (text && index < 5) {
       inputs.current[index + 1]?.focus();
     }
-
     if (!text && index > 0) {
       inputs.current[index - 1]?.focus();
     }
@@ -42,16 +44,23 @@ const OTP = () => {
       return;
     }
 
-    // 🔁 Navigate to the next screen passed in query
     const redirectTo = typeof next === 'string' ? next : 'TypeSelector';
     router.push('/NewPassword');
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
         <BackgroundOne text="OTP">
-          <View style={styles.container}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.title}>Enter 6-digit OTP</Text>
 
             <View style={styles.otpContainer}>
@@ -68,12 +77,12 @@ const OTP = () => {
               ))}
             </View>
 
-            <View style={{ marginTop: 180 }}>
+            <View style={{ marginTop: 60 }}>
               <MyButton title="Verify OTP" onPress={handleVerify} />
             </View>
-          </View>
+          </ScrollView>
         </BackgroundOne>
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
@@ -81,16 +90,17 @@ const OTP = () => {
 export default OTP;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingTop: 100,
+    paddingBottom: 200,
+    gap: 20,
   },
   title: {
     fontSize: 20,
     color: Colors.primary,
-    marginBottom: 20,
     fontWeight: 'bold',
   },
   otpContainer: {

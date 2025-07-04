@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  Keyboard,
   StyleSheet,
+  TouchableOpacity,
   TouchableWithoutFeedback,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
+
 import BackgroundOne from '../../components/BackgroundDesign';
 import InputButton from '@/components/Inputbutton';
 import MyButton from '@/components/MyButton';
@@ -27,16 +31,22 @@ const Login = () => {
     if (emailError) return alert(emailError);
     if (passwordError) return alert(passwordError);
 
-    // All good → Move to TypeSelector screen
     router.push('/TypeSelector');
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
         <BackgroundOne text="Login">
-          <View style={styles.formContainer}>
-            {/* Email Input */}
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <InputButton
               placeholder="Enter Email"
               value={email}
@@ -44,7 +54,6 @@ const Login = () => {
               keyboardType="email-address"
             />
 
-            {/* Password Input */}
             <InputButton
               placeholder="Password"
               value={password}
@@ -55,11 +64,8 @@ const Login = () => {
               onToggle={() => setShowPassword(!showPassword)}
             />
 
-            {/* Forget Password Link */}
-            <TouchableOpacity
-              onPress={() => router.push('/EnterEmail')}
-              style={styles.forgetContainer}
-            >
+            {/* Forget Password */}
+            <TouchableOpacity onPress={() => router.push('/EnterEmail')}>
               <Text style={styles.forgetText}>Forget Password?</Text>
             </TouchableOpacity>
 
@@ -72,9 +78,9 @@ const Login = () => {
             <TouchableOpacity onPress={() => router.push('/Signup')}>
               <Text style={styles.signupText}>Create New Account</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </BackgroundOne>
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
@@ -82,24 +88,24 @@ const Login = () => {
 export default Login;
 
 const styles = StyleSheet.create({
-  formContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContainer: {
+    flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
-  },
-  forgetContainer: {
-    alignSelf: 'flex-end',
-    marginTop: 5,
-    marginRight: 100,
+    paddingTop: 0,
+    paddingBottom: 200, // for scroll space
+    gap: 2,
   },
   forgetText: {
+    alignSelf: 'flex-end',
+    marginTop: 5,
+    marginRight: -140,
     color: Colors.primary,
-    fontSize: 16,
+    fontSize: 20,
     textDecorationLine: 'underline',
   },
   signupText: {
-    marginTop: 20,
+    marginTop: 25,
     fontSize: 16,
     color: Colors.primary,
     fontWeight: '600',

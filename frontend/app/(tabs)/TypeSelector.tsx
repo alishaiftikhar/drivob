@@ -8,8 +8,10 @@ const TypeSelector = () => {
   const router = useRouter();
 
   return (
-    <BackgroundOne text="Select Role">
+    <BackgroundOne text="Selection">
       <View style={styles.container}>
+        <Text style={styles.title}>Choose Your Role</Text>
+
         {/* Client Button */}
         <TouchableOpacity
           style={styles.roleButton}
@@ -35,26 +37,32 @@ export default TypeSelector;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start', // Move content to top
     alignItems: 'center',
-    paddingTop: 180, // 👈 pushes the buttons downward but still higher on screen
-    gap: 30,
+    paddingTop: 10, // 🔁 Change this to move everything up/down
+    gap: 15, // Space between title and buttons
+  },
+  title: {
+    fontSize: 26,
+    color: Colors.text,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   roleButton: {
     backgroundColor: Colors.primary,
-    width: 250,
-    paddingVertical: 15,
-    borderRadius: 70,
+    width: 260,
+    paddingVertical: 16,
+    borderRadius: 35,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 2, height: 4 },
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 2, height: 6 },
+    shadowRadius: 6,
+    elevation: 6,
   },
   roleText: {
     color: Colors.text,
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600',
     letterSpacing: 1,
   },
 });

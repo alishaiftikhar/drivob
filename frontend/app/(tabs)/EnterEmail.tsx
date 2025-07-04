@@ -6,6 +6,9 @@ import {
   Keyboard,
   StyleSheet,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import BackgroundOne from '../../components/BackgroundDesign';
@@ -22,16 +25,23 @@ const EnterEmail = () => {
     const emailError = validateEmail(email);
     if (emailError) return Alert.alert(emailError);
 
-    // If valid, navigate to OTP screen
     router.push('/OTP');
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
-        <BackgroundOne text="Enter Email">
-          <View style={styles.formContainer}>
-            {/* Email Input */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        <BackgroundOne text="Email">
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Email Input with padding */}
             <InputButton
               placeholder="Enter your registered Email"
               value={email}
@@ -39,18 +49,18 @@ const EnterEmail = () => {
               keyboardType="email-address"
             />
 
-            {/* Submit Button */}
-            <View style={{ marginTop: 125 }}>
+            {/* Button with spacing */}
+            <View style={{ marginTop: 40 }}>
               <MyButton title="Submit" onPress={handleSubmit} />
             </View>
 
-            {/* Info */}
+            {/* Info Text */}
             <Text style={styles.infoText}>
               We’ll send you an OTP to reset your password
             </Text>
-          </View>
+          </ScrollView>
         </BackgroundOne>
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
@@ -58,16 +68,19 @@ const EnterEmail = () => {
 export default EnterEmail;
 
 const styles = StyleSheet.create({
-  formContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContainer: {
+    flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 200,
+    gap: 25,
   },
   infoText: {
-    marginTop: 20,
+    marginTop: 10,
     fontSize: 16,
     color: Colors.primary,
     textAlign: 'center',
+    paddingHorizontal: 10,
   },
 });

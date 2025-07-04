@@ -48,9 +48,9 @@ export default InputButton;
 
 const styles = StyleSheet.create({
   inputWrapper: {
-    width: 350,
+    width: 300,
     justifyContent: 'center',
-    marginVertical: 10,
+    marginVertical: 4,
   },
   input: {
     backgroundColor: Colors.text, // Light area (white)

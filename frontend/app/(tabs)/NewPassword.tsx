@@ -6,6 +6,9 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import BackgroundOne from '../../components/BackgroundDesign';
 import Colors from '@/constants/Color';
@@ -31,16 +34,22 @@ const NewPassword = () => {
     if (passwordError) return Alert.alert(passwordError);
     if (confirmPasswordError) return Alert.alert(confirmPasswordError);
 
-    // ✅ All checks passed
     router.push('/TypeSelector');
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
         <BackgroundOne text="Password">
-          <View style={styles.formContainer}>
-            {/* New Password */}
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <InputButton
               placeholder="Enter New Password"
               value={newPassword}
@@ -51,7 +60,6 @@ const NewPassword = () => {
               onToggle={() => setShowPassword(!showPassword)}
             />
 
-            {/* Confirm Password */}
             <InputButton
               placeholder="Confirm Password"
               value={confirmPassword}
@@ -62,13 +70,12 @@ const NewPassword = () => {
               onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
             />
 
-            {/* Submit Button */}
-            <View style={{ marginTop: 80 }}>
+            <View style={styles.buttonArea}>
               <MyButton title="Submit" onPress={handleSubmit} />
             </View>
-          </View>
+          </ScrollView>
         </BackgroundOne>
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
@@ -76,10 +83,16 @@ const NewPassword = () => {
 export default NewPassword;
 
 const styles = StyleSheet.create({
-  formContainer: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 160,
+    gap: 2,
+  },
+  buttonArea: {
+    marginTop: 10,
   },
 });

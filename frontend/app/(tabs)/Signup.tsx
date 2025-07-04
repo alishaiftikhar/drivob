@@ -2,16 +2,20 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Keyboard,
   Alert,
+  TouchableOpacity,
   TouchableWithoutFeedback,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
-import BackgroundOne from '../../components/BackgroundDesign';
-import MyButton from '../../components/MyButton';
-import { useRouter } from 'expo-router';
 
+import BackgroundOne from '../../components/BackgroundDesign';
+import InputButton from '@/components/Inputbutton';
+import MyButton from '@/components/MyButton';
+import { useRouter } from 'expo-router';
 import Colors from '@/constants/Color';
 import {
   validateEmail,
@@ -19,10 +23,9 @@ import {
   validateConfirmPassword,
 } from '@/components/Validation';
 
-import InputButton from '@/components/Inputbutton'; // ✅ Custom input component
-
 const Signup = () => {
   const router = useRouter();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -43,9 +46,17 @@ const Signup = () => {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
         <BackgroundOne text="Signup">
-          <View style={styles.formContainer}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <InputButton
               placeholder="Enter Email"
               value={email}
@@ -73,16 +84,16 @@ const Signup = () => {
               onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
             />
 
-            <View style={{ marginTop: 125 }}>
+            <View style={styles.buttonWrapper}>
               <MyButton title="Sign Up" onPress={handleSignUp} />
             </View>
 
             <TouchableOpacity onPress={() => router.push('/Login')}>
               <Text style={styles.signupText}>Already have an account? Login</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </BackgroundOne>
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
@@ -90,15 +101,21 @@ const Signup = () => {
 export default Signup;
 
 const styles = StyleSheet.create({
-  formContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContainer: {
+    flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 0, // 👉 more top spacing
+    paddingBottom: 200, // 👉 enough bottom padding to scroll when keyboard shows
+    gap: 2,
+  },
+  buttonWrapper: {
+    marginTop: 15,
   },
   signupText: {
-    marginTop: 20,
+    marginTop: 25,
+    fontSize: 16,
     color: Colors.primary,
-    fontSize: 20,
+    fontWeight: '600',
   },
 });

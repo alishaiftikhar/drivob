@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import Colors from '@/constants/Color';
 
-const circleSize = 200;
+const circleSize = 150;
 
 type BackgroundDesignProps = {
   children?: React.ReactNode;
@@ -15,7 +15,7 @@ const BackgroundDesign = ({
   children,
   text,
   imageSource,
-  topOffset = 150,
+  topOffset = 100,
 }: BackgroundDesignProps) => {
   return (
     <View style={styles.container}>

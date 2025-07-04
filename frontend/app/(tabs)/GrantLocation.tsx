@@ -15,7 +15,7 @@ const GrantLocation = () => {
         <Text style={styles.title}>Grant Location Access</Text>
 
         <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/LiveLocation')}>
-          <Text style={styles.buttonText}>Grant Location</Text>
+          <Text style={styles.buttonText}> Location</Text>
         </TouchableOpacity>
       </View>
     </BackgroundOne>
