@@ -1,10 +1,9 @@
-// RideDetail.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
+import { View, TextInput, StyleSheet, ScrollView, Alert } from 'react-native';
 import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
 import { useRouter } from 'expo-router';
-import { Picker } from '@react-native-picker/picker';
+import BackgroundOne from '@/components/BackgroundDesign';
 
 const RideDetail = () => {
   const router = useRouter();
@@ -13,97 +12,89 @@ const RideDetail = () => {
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [vehicleType, setVehicleType] = useState('Car');
-  const [fuelType, setFuelType] = useState('Petrol');
-  const [rideType, setRideType] = useState('One-way');
+  const [vehicleType, setVehicleType] = useState('');
+  const [fuelType, setFuelType] = useState('');
+  const [rideType, setRideType] = useState('');
   const [rideDuration, setRideDuration] = useState('');
-  const [extraNote, setExtraNote] = useState('');
 
   const handleSave = () => {
-    // Save ride details to state or backend
-    // Navigate to MapDistanceScreen
-    router.push('/(tabs)/Client/MapDistanceScreen');
+    if (!source || !destination) {
+      Alert.alert('Error', 'Please enter both source and destination.');
+      return;
+    }
+
+    router.push({
+      pathname: '/(tabs)/Client/MapDistanceScreen',
+      params: {
+        source,
+        destination,
+        date,
+        time,
+        vehicleType,
+        fuelType,
+        rideType,
+        rideDuration,
+      },
+    });
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Enter Ride Details</Text>
+    <BackgroundOne text={'Ride\nDetails'}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.row}>
+          <TextInput placeholder="Source" value={source} onChangeText={setSource} style={[styles.input, styles.inputHalf]} />
+          <TextInput placeholder="Destination" value={destination} onChangeText={setDestination} style={[styles.input, styles.inputHalf]} />
+        </View>
 
-      <TextInput placeholder="Source" value={source} onChangeText={setSource} style={styles.input} />
-      <TextInput placeholder="Destination" value={destination} onChangeText={setDestination} style={styles.input} />
-      <TextInput placeholder="Date (e.g. 2025-07-06)" value={date} onChangeText={setDate} style={styles.input} />
-      <TextInput placeholder="Time (e.g. 21:00)" value={time} onChangeText={setTime} style={styles.input} />
+        <View style={styles.row}>
+          <TextInput placeholder="Date" value={date} onChangeText={setDate} style={[styles.input, styles.inputHalf]} />
+          <TextInput placeholder="Time" value={time} onChangeText={setTime} style={[styles.input, styles.inputHalf]} />
+        </View>
 
-      <Text style={styles.label}>Vehicle Type</Text>
-      <View style={styles.pickerContainer}>
-        <Picker selectedValue={vehicleType} onValueChange={setVehicleType}>
-          <Picker.Item label="Car" value="Car" />
-          <Picker.Item label="Bike" value="Bike" />
-          <Picker.Item label="Rickshaw" value="Rickshaw" />
-        </Picker>
-      </View>
+        <View style={styles.row}>
+          <TextInput placeholder="Vehicle Type" value={vehicleType} onChangeText={setVehicleType} style={[styles.input, styles.inputHalf]} />
+          <TextInput placeholder="Fuel Type" value={fuelType} onChangeText={setFuelType} style={[styles.input, styles.inputHalf]} />
+        </View>
 
-      <Text style={styles.label}>Fuel Type</Text>
-      <View style={styles.pickerContainer}>
-        <Picker selectedValue={fuelType} onValueChange={setFuelType}>
-          <Picker.Item label="Petrol" value="Petrol" />
-          <Picker.Item label="Diesel" value="Diesel" />
-          <Picker.Item label="Electric" value="Electric" />
-        </Picker>
-      </View>
+        <View style={styles.row}>
+          <TextInput placeholder="Ride Type" value={rideType} onChangeText={setRideType} style={[styles.input, styles.inputHalf]} />
+          <TextInput placeholder="Duration (e.g. 2h 30m)" value={rideDuration} onChangeText={setRideDuration} style={[styles.input, styles.inputHalf]} />
+        </View>
 
-      <Text style={styles.label}>Ride Type</Text>
-      <View style={styles.pickerContainer}>
-        <Picker selectedValue={rideType} onValueChange={setRideType}>
-          <Picker.Item label="One-way" value="One-way" />
-          <Picker.Item label="Round-trip" value="Round-trip" />
-        </Picker>
-      </View>
-
-      <TextInput placeholder="Estimated Ride Duration (minutes)" value={rideDuration} onChangeText={setRideDuration} style={styles.input} />
-      <TextInput placeholder="Extra Notes (optional)" value={extraNote} onChangeText={setExtraNote} style={styles.input} />
-
-      <View style={styles.buttonWrapper}>
-        <MyButton title="Save Details" onPress={handleSave} />
-      </View>
-    </ScrollView>
+        <View style={styles.buttonWrapper}>
+          <MyButton title="Save Details" onPress={handleSave} />
+        </View>
+      </ScrollView>
+    </BackgroundOne>
   );
 };
 
 export default RideDetail;
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fff',
+  scrollContainer: {
+    padding: 10,
     flexGrow: 1,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: Colors.primary,
-    textAlign: 'center',
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 10,
     padding: 12,
-    marginBottom: 15,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    marginBottom: 15,
-  },
-  label: {
-    marginBottom: 5,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '500',
     color: Colors.primary,
   },
+  inputHalf: {
+    width: '48%',
+  },
   buttonWrapper: {
-    marginTop: 20,
+    marginTop: 30,
+    marginBottom: 50,
   },
 });
