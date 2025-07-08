@@ -1,49 +1,15 @@
 USE drivo;
-CREATE TABLE admin (
+
+-- Admin table
+CREATE TABLE IF NOT EXISTS admin (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL
-);INSERT INTO client (
-    id,
-    full_name,
-    cnic,
-    age,
-    phone_number,
-    address,
-    email,
-    password
-  )
-VALUES (
-    id:intINSERT INTO client (
-        id,
-        full_name,
-        cnic,
-        age,
-        phone_number,
-        address,
-        email,
-        password
-      )
-    VALUES (
-        id:int,
-        'full_name:varchar',
-        'cnic:varchar',
-        age:int,
-        'phone_number:varchar',
-        'address:text',
-        'email:varchar',
-        'password:varchar'
-      );,
-    'full_name:varchar',
-    'cnic:varchar',
-    age:int,
-    'phone_number:varchar',
-    'address:text',
-    'email:varchar',
-    'password:varchar'
-  );
-CREATE TABLE client (
+);
+
+-- Client table
+CREATE TABLE IF NOT EXISTS client (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100),
     cnic VARCHAR(15) UNIQUE,
@@ -53,7 +19,9 @@ CREATE TABLE client (
     email VARCHAR(100) UNIQUE,
     password VARCHAR(255) NOT NULL
 );
-CREATE TABLE driver (
+
+-- Driver table
+CREATE TABLE IF NOT EXISTS driver (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(100),
     cnic VARCHAR(15) UNIQUE,
@@ -66,7 +34,9 @@ CREATE TABLE driver (
     email VARCHAR(100) UNIQUE,
     password VARCHAR(255) NOT NULL
 );
-CREATE TABLE ride (
+
+-- Ride table
+CREATE TABLE IF NOT EXISTS ride (
     id INT AUTO_INCREMENT PRIMARY KEY,
     client_id INT,
     driver_id INT,
@@ -80,7 +50,9 @@ CREATE TABLE ride (
     FOREIGN KEY (client_id) REFERENCES client(id),
     FOREIGN KEY (driver_id) REFERENCES driver(id)
 );
-CREATE TABLE payment (
+
+-- Payment table
+CREATE TABLE IF NOT EXISTS payment (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ride_id INT,
     client_id INT,
@@ -91,7 +63,9 @@ CREATE TABLE payment (
     FOREIGN KEY (ride_id) REFERENCES ride(id),
     FOREIGN KEY (client_id) REFERENCES client(id)
 );
-CREATE TABLE review (
+
+-- Review table
+CREATE TABLE IF NOT EXISTS review (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ride_id INT,
     client_id INT,
