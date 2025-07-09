@@ -6,7 +6,7 @@ import axios from 'axios';
 import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
 
-const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace it
+const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace this with a valid key
 
 const MapDistanceScreen = () => {
   const router = useRouter();
@@ -53,7 +53,7 @@ const MapDistanceScreen = () => {
       const distanceInKm = distanceInMeters / 1000;
       setDistance(distanceInKm);
 
-      // Simulated fuel rates (you can fetch from API)
+      // Simulated fuel rates
       const fuelRates: Record<string, number> = {
         Petrol: 280,
         Diesel: 265,
@@ -75,6 +75,7 @@ const MapDistanceScreen = () => {
       setLoading(false);
     } catch (err) {
       console.error(err);
+      setLoading(false);
     }
   };
 
@@ -118,6 +119,9 @@ const MapDistanceScreen = () => {
       <View style={styles.detailsBox}>
         <Text style={styles.detailText}>📍 Distance: {distance?.toFixed(2)} KM</Text>
         <Text style={styles.detailText}>💰 Payment: Rs. {price}</Text>
+      </View>
+
+      <View style={styles.doneButtonBox}>
         <MyButton title="Done" onPress={handleDone} />
       </View>
     </View>
@@ -132,7 +136,7 @@ const styles = StyleSheet.create({
   },
   detailsBox: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 80,
     left: 20,
     right: 20,
     backgroundColor: 'white',
@@ -148,6 +152,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     color: Colors.primary,
+  },
+  doneButtonBox: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
   loader: {
     flex: 1,

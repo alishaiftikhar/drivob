@@ -4,6 +4,9 @@ import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
 import { useRouter } from 'expo-router';
 import BackgroundOne from '@/components/BackgroundDesign';
+import axios from 'axios';
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyCkreU2c_ffAc-erK2xe42PCjxhpBrJRTs'; // Paste your real key here
 
 const RideDetail = () => {
   const router = useRouter();
@@ -17,17 +20,52 @@ const RideDetail = () => {
   const [rideType, setRideType] = useState('');
   const [rideDuration, setRideDuration] = useState('');
 
-  const handleSave = () => {
+  const getCoordinates = async (place: string) => {
+    try {
+      const res = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json`,
+        {
+          params: {
+            address: place,
+            key: GOOGLE_MAPS_API_KEY,
+          },
+        }
+      );
+
+      const loc = res.data.results[0]?.geometry?.location;
+      return loc ? { latitude: loc.lat, longitude: loc.lng } : null;
+    } catch (err) {
+      console.error('Geocode error:', err);
+      return null;
+    }
+  };
+
+  const handleSave = async () => {
     if (!source || !destination) {
       Alert.alert('Error', 'Please enter both source and destination.');
+      return;
+    }
+
+    const sourceCoords = await getCoordinates(source);
+    const destCoords = await getCoordinates(destination);
+
+    if (!sourceCoords) {
+      Alert.alert('Invalid Source', 'Google Maps could not find the source location.');
+      return;
+    }
+
+    if (!destCoords) {
+      Alert.alert('Invalid Destination', 'Google Maps could not find the destination location.');
       return;
     }
 
     router.push({
       pathname: '/(tabs)/Client/MapDistanceScreen',
       params: {
-        source,
-        destination,
+        sourceLat: sourceCoords.latitude.toString(),
+        sourceLng: sourceCoords.longitude.toString(),
+        destLat: destCoords.latitude.toString(),
+        destLng: destCoords.longitude.toString(),
         date,
         time,
         vehicleType,
@@ -39,7 +77,7 @@ const RideDetail = () => {
   };
 
   return (
-    <BackgroundOne text={'Ride\nDetails'}>
+    <BackgroundOne text="Ride Details">
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.row}>
           <TextInput placeholder="Source" value={source} onChangeText={setSource} style={[styles.input, styles.inputHalf]} />
@@ -58,7 +96,7 @@ const RideDetail = () => {
 
         <View style={styles.row}>
           <TextInput placeholder="Ride Type" value={rideType} onChangeText={setRideType} style={[styles.input, styles.inputHalf]} />
-          <TextInput placeholder="Duration (e.g. 2h 30m)" value={rideDuration} onChangeText={setRideDuration} style={[styles.input, styles.inputHalf]} />
+          <TextInput placeholder="Duration" value={rideDuration} onChangeText={setRideDuration} style={[styles.input, styles.inputHalf]} />
         </View>
 
         <View style={styles.buttonWrapper}>
