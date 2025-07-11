@@ -7,8 +7,9 @@ const circleSize = 150;
 type BackgroundDesignProps = {
   children?: React.ReactNode;
   text?: string;
-  imageSource?: any; // Accept icon component OR image source
+  imageSource?: any;
   topOffset?: number;
+  floatingTopRight?: React.ReactNode; // ✅ NEW
 };
 
 const BackgroundDesign = ({
@@ -16,14 +17,18 @@ const BackgroundDesign = ({
   text,
   imageSource,
   topOffset = 100,
+  floatingTopRight, // ✅ Add top-right component
 }: BackgroundDesignProps) => {
   return (
     <View style={styles.container}>
-      {/* Circle at the top */}
+      {/* ✅ Floating top-right item */}
+      {floatingTopRight && <View style={styles.topRight}>{floatingTopRight}</View>}
+
+      {/* Top center circle */}
       <View style={[styles.circleContainer, { marginTop: topOffset }]}>
         <View style={styles.circle}>
           {React.isValidElement(imageSource) ? (
-            imageSource // ✅ Can render <TouchableOpacity> with icon
+            imageSource
           ) : imageSource ? (
             <Image source={imageSource} style={styles.image} />
           ) : (
@@ -32,7 +37,7 @@ const BackgroundDesign = ({
         </View>
       </View>
 
-      {/* Child screen content */}
+      {/* Main content */}
       <View style={styles.childArea}>{children}</View>
     </View>
   );
@@ -45,6 +50,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
     alignItems: 'center',
+  },
+  topRight: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 999,
   },
   circleContainer: {
     width: circleSize + 20,
