@@ -47,7 +47,7 @@ export const validateCNIC = (cnic: string): string => {
 
 // ✅ Email
 export const validateEmail = (email: string): string => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\. [^\s@]+$/;
   if (!email.trim()) return 'Email is required.';
   if (!emailRegex.test(email)) return 'Invalid email format.';
   return '';
