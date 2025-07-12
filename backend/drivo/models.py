@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import RegexValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
     is_driver = models.BooleanField(default=False)
@@ -60,7 +61,7 @@ class Review(models.Model):
     ride = models.ForeignKey(Ride, on_delete=models.CASCADE)
     client = models.ForeignKey(ClientProfile, on_delete=models.CASCADE)
     driver = models.ForeignKey(DriverProfile, on_delete=models.CASCADE)
-    rating = models.IntegerField()
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
