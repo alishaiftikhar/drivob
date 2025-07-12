@@ -3,11 +3,21 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
-from drivo.models import User, DriverProfile, ClientProfile
-from drivo.models import Ride, Payment, Review
-from drivo.serializers import UserSerializer, DriverProfileSerializer, ClientProfileSerializer
-from drivo.serializers import RideSerializer, PaymentSerializer, ReviewSerializer
 
+# Models
+from drivo.models import User, DriverProfile, ClientProfile, Ride, Payment, Review
+
+# Serializers
+from drivo.serializers import (
+    UserSerializer,
+    DriverProfileSerializer,
+    ClientProfileSerializer,
+    RideSerializer,
+    PaymentSerializer,
+    ReviewSerializer,
+)
+
+# ViewSets
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -32,6 +42,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
 
+# Signup View
 class SignupView(APIView):
     def post(self, request):
         data = request.data
