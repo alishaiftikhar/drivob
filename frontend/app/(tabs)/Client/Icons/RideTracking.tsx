@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 
-// Define a type for coordinates
+// Type for location coordinates
 type Coordinates = {
   latitude: number;
   longitude: number;
@@ -34,7 +34,7 @@ const RideTracking = () => {
         longitudeDelta: 0.05,
       });
 
-      // Set fake locations for demonstration
+      // Simulated driver and client positions
       setDriverLocation({
         latitude: userLat + 0.01,
         longitude: userLng + 0.01,
@@ -53,7 +53,7 @@ const RideTracking = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#4B7BEC" />
-        <Text>Loading Ride Tracking...</Text>
+        <Text style={{ marginTop: 10 }}>Loading Ride Tracking...</Text> {/* ✅ Fixed */}
       </View>
     );
   }
