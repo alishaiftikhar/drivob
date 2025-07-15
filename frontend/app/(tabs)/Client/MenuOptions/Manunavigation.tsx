@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,19 +10,20 @@ const MenuNavigation = ({ visible, toggleSidebar }: { visible: boolean, toggleSi
   const router = useRouter();
 
   const menuOptions = [
-    { label: 'Profile', path: '/(tabs)/Client/MenuOptions/ProfileScreen' },
-    { label: 'Settings', path: '/(tabs)/Client/MenuOptions/SettingsScreen' },
-    { label: 'Language', path: '/(tabs)/Client/MenuOptions/LanguageScreen' },
-    { label: 'Type Selector', path: '/(tabs)/Client/MenuOptions/TypeSelectorScreen' },
-    { label: 'Payment', path: '/(tabs)/Client/MenuOptions/PaymentScreen' },
-    { label: 'Ride History', path: '/(tabs)/Client/MenuOptions/RideHistoryScreen' },
-    { label: 'Reviews', path: '/(tabs)/Client/MenuOptions/ReviewsScreen' },
+    { label: 'Profile', path: '/(tabs)/Client/MenuOptions/Profile/ProfileScreen' },
+    { label: 'Settings', path: '/(tabs)/Client/MenuOptions/Setting/SettingScreen' },
+    { label: 'Language', path: '/(tabs)/Client/MenuOptions/Language/LanguageScreen' },
+    { label: 'Type Selector', path: '/(tabs)/Client/MenuOptions/TypeSelector/TypeSelectorScreen' },
+    { label: 'Payment', path: '/(tabs)/Client/MenuOptions/Payment/PaymentScreen' },
+    { label: 'Ride History', path: '/(tabs)/Client/MenuOptions/RideHistory/RideHistoryScreen' },
+    { label: 'Reviews', path: '/(tabs)/Client/MenuOptions/Reviews/ReviewsScreen' },
+    { label: 'Ride Details', path: '/(tabs)/Client/RideDetail' },  // ✅ Added this line
     { label: 'Logout', path: 'logout' }
   ];
 
   const sidebarAnim = useRef(new Animated.Value(visible ? 0 : -SCREEN_WIDTH * 0.7)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.timing(sidebarAnim, {
       toValue: visible ? 0 : -SCREEN_WIDTH * 0.7,
       duration: 300,

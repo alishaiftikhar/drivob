@@ -16,13 +16,13 @@ const BottomIcons = () => {
       </TouchableOpacity>
 
       {/* Tracking */}
-      <TouchableOpacity style={styles.iconWrapper} onPress={() => router.push('/(tabs)/Client/Icons/RideTracking')}>
+      <TouchableOpacity style={styles.iconWrapper} onPress={() => router.push('/(tabs)/Client/Icons/RideTracking/RideTracking')}>
         <Ionicons name="navigate-circle-outline" size={28} color="#2c3e50" />
         <Text style={styles.label}>Tracking</Text>
       </TouchableOpacity>
 
       {/* Emergency */}
-      <TouchableOpacity style={styles.iconWrapper} onPress={() => router.push('/(tabs)/Client/Icons/Emergency')}>
+      <TouchableOpacity style={styles.iconWrapper} onPress={() => router.push('/(tabs)/Client/Icons/Emergency/Emergency')}>
         <Ionicons name="alert-circle" size={28} color="red" />
         <Text style={styles.label}>Emergency</Text>
       </TouchableOpacity>

@@ -16,8 +16,9 @@ import MyButton from '@/components/MyButton';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
-import BottomTabs from '/(tabs)/Client/Icons/BottomIcons';
-import MenuNavigation from '/(tabs)/Client/MenuOptions/Manunavigation';
+import BottomTabs from './Icons/BottomIcons';
+import MenuNavigation from './MenuOptions/Manunavigation';
+
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
