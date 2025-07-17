@@ -43,8 +43,11 @@ class Ride(models.Model):
     fare = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=[('requested', 'Requested'), ('accepted', 'Accepted'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='requested')
     created_at = models.DateTimeField(auto_now_add=True)
+<<<<<<< HEAD
     def __str__(self):
         return f"Ride {self.id} - {self.client.full_name} to {self.dropoff_location}"
+=======
+>>>>>>> hifza
 
 class Payment(models.Model):
     ride = models.ForeignKey(Ride, on_delete=models.CASCADE)
@@ -53,17 +56,26 @@ class Payment(models.Model):
     method = models.CharField(max_length=20, choices=[('JazzCash', 'JazzCash'), ('EasyPaisa', 'EasyPaisa'), ('Bank Transfer', 'Bank Transfer'), ('Cash', 'Cash')])
     status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('paid', 'Paid'), ('failed', 'Failed')], default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
+<<<<<<< HEAD
     def __str__(self):
         return f"Payment {self.id} - {self.amount} PKR"
 
+=======
+>>>>>>> hifza
 
 class Review(models.Model):
     ride = models.ForeignKey(Ride, on_delete=models.CASCADE)
     client = models.ForeignKey(ClientProfile, on_delete=models.CASCADE)
     driver = models.ForeignKey(DriverProfile, on_delete=models.CASCADE)
+<<<<<<< HEAD
     rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Review by {self.client.full_name} - {self.rating} stars"
 
+=======
+    rating = models.IntegerField()
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+>>>>>>> hifza
