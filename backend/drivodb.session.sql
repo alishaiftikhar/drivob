@@ -35,7 +35,7 @@ CREATE TABLE driver (
 );
 
 -- Ride table
-CREATE TABLE ride (
+CREATE TABLE ride (git 
     id INT AUTO_INCREMENT PRIMARY KEY,
     client_id INT,
     driver_id INT,
