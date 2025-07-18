@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import InputButton from '@/components/Inputbutton';
 import MyButton from '@/components/MyButton';
@@ -22,13 +22,25 @@ import Colors from '@/constants/Color';
 
 const ClientProfile = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
 
-  const [name, setName] = useState('');
+  // Handle optional parameters safely
+  const getParam = (key: string): string => {
+    const value = params[key];
+    if (Array.isArray(value)) return value[0];
+    if (typeof value === 'string') return value;
+    return '';
+  };
+
+  // Pre-filled if editing, empty if new user
+  const [name, setName] = useState(getParam('name'));
   const [cnic, setCnic] = useState('');
   const [age, setAge] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(getParam('phone'));
   const [address, setAddress] = useState('');
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(
+    getParam('dp') || null
+  );
 
   const handleIconPress = async () => {
     const mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -77,7 +89,28 @@ const ClientProfile = () => {
     }
 
     Alert.alert('Success', 'Profile Saved!');
-    router.push('/GrantLocation');
+
+    const profileData = {
+      name,
+      phone,
+      role: 'Client',
+      status: 'Active',
+      dp: profileImage || '',
+    };
+
+    // 🔁 If coming from menu/profile → editing mode, return back to profile screen
+    if (getParam('editing') === 'true') {
+      router.replace({
+        pathname: '/(tabs)/Client/MenuOptions/ProfileScreen',
+        params: profileData,
+      });
+    } else {
+      // 🆕 If new user during signup, move forward
+      router.push({
+        pathname: '/GrantLocation',
+        params: profileData,
+      });
+    }
   };
 
   return (
@@ -103,11 +136,34 @@ const ClientProfile = () => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <InputButton placeholder="Full Name" value={name} onChangeText={setName} />
-            <InputButton placeholder="CNIC" value={cnic} onChangeText={setCnic} keyboardType="numeric" />
-            <InputButton placeholder="Age" value={age} onChangeText={setAge} keyboardType="numeric" />
-            <InputButton placeholder="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            <InputButton placeholder="Address" value={address} onChangeText={setAddress} />
+            <InputButton
+              placeholder="Full Name"
+              value={name}
+              onChangeText={setName}
+            />
+            <InputButton
+              placeholder="CNIC"
+              value={cnic}
+              onChangeText={setCnic}
+              keyboardType="numeric"
+            />
+            <InputButton
+              placeholder="Age"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
+            <InputButton
+              placeholder="Phone Number"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+            <InputButton
+              placeholder="Address"
+              value={address}
+              onChangeText={setAddress}
+            />
 
             <View style={{ marginTop: 40 }}>
               <MyButton title="Save Profile" onPress={handleSaveProfile} />
@@ -126,7 +182,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
     paddingTop: 0,
-    paddingBottom: 200, // Enough space for keyboard scroll
+    paddingBottom: 200,
     gap: 2,
   },
   profileImage: {
