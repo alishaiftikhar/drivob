@@ -93,9 +93,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'drivo',
+        'NAME': 'driver_hiring_db',
         'USER': 'root',
-        'PASSWORD': 'alisha124695',
+        'PASSWORD': 'hifzaarif65',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
