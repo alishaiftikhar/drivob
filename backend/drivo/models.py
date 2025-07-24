@@ -88,3 +88,4 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.client.full_name} - {self.rating} stars"
+
