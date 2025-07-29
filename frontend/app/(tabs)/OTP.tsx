@@ -44,8 +44,14 @@ const OTP = () => {
       return;
     }
 
-    const redirectTo = typeof next === 'string' ? next : 'TypeSelector';
-    router.push('/NewPassword');
+    // ✅ Conditional navigation based on where you came from
+    if (next === 'forgot') {
+      router.push('/NewPassword');
+    } else if (next === 'signup') {
+      router.push('/(tabs)/TypeSelector');
+    } else {
+      Alert.alert('Navigation target is missing.');
+    }
   };
 
   return (

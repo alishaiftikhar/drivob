@@ -44,14 +44,15 @@ export const validateCNIC = (cnic: string): string => {
   if (!cnicRegex.test(cnic)) return 'CNIC must be exactly 13 digits.';
   return '';
 };
-
-// ✅ Email
+// ✅ Email (Proper format + no spaces)
 export const validateEmail = (email: string): string => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\. [^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   if (!email.trim()) return 'Email is required.';
-  if (!emailRegex.test(email)) return 'Invalid email format.';
+  if (!emailRegex.test(email)) return 'Enter a valid email address.';
   return '';
 };
+
 
 // ✅ Address
 export const validateAddress = (address: string): string => {
