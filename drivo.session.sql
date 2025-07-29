@@ -1,4 +1,4 @@
-USE drivo;
+USE drivodb;
 -- Admin table
 CREATE TABLE admin (
     id INT AUTO_INCREMENT PRIMARY KEY,
