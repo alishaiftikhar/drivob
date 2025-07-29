@@ -38,21 +38,21 @@ const OTP = () => {
   };
 
   const handleVerify = () => {
-    const enteredOTP = otp.join('');
-    if (enteredOTP.length !== 6) {
-      Alert.alert('Please enter the complete 6-digit OTP');
-      return;
-    }
+  const enteredOTP = otp.join('');
+  if (enteredOTP.length !== 6) {
+    Alert.alert('Please enter the complete 6-digit OTP');
+    return;
+  }
 
-    // ✅ Conditional navigation based on where you came from
-    if (next === 'forgot') {
-      router.push('/NewPassword');
-    } else if (next === 'signup') {
-      router.push('/(tabs)/TypeSelector');
-    } else {
-      Alert.alert('Navigation target is missing.');
-    }
-  };
+  const redirectTo = typeof next === 'string' ? next : 'TypeSelector';
+
+  // Handle navigation
+  if (redirectTo === 'forgot') {
+    router.push('/NewPassword');
+  } else {
+    router.push('/TypeSelector');
+  }
+};
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
