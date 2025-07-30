@@ -44,9 +44,9 @@ const OTP = () => {
 
     // Conditional navigation
     if (from === 'signup') {
-      router.push('/tabs/TypeSelectorScreen');
+      router.push('/(tabs)/TypeSelector');
     } else if (from === 'login') {
-      router.push('/NewPasswordScreen');
+      router.push('/NewPassword');
     } else {
       Alert.alert('Navigation Error', 'Unknown source screen.');
     }
