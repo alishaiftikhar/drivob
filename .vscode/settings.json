@@ -2,28 +2,18 @@
     "sqltools.connections": [
         {
             "mysqlOptions": {
-<<<<<<< HEAD
                 "authProtocol": "default",
-=======
-                "authProtocol": "xprotocol",
->>>>>>> hifza
                 "enableSsl": "Disabled"
             },
             "previewLimit": 50,
             "server": "localhost",
             "port": 3306,
             "driver": "MySQL",
-            "name": "drivodb",
-            "database": "drivo",
-<<<<<<< HEAD
+            "name": "drivo",
+            "database": "drivodb",
             "username": "root",
-            "password": "alisha124695",
+            "password": "hifzaarif65",
             "connectionTimeout": 30
-=======
-            "username": "admin",
-            "connectionTimeout": 30,
-            "password": "alisha124695"
->>>>>>> hifza
         }
     ]
 }

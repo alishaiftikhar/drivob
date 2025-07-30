@@ -20,11 +20,18 @@ import MyButton from '@/components/MyButton';
 import BackgroundOne from '../../../components/BackgroundDesign';
 import Colors from '@/constants/Color';
 
+import {
+  validateFullName,
+  validateCNIC,
+  validateAge,
+  validatePhoneNumber,
+  validateAddress,
+} from '@/components/Validation';
+
 const ClientProfile = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Handle optional parameters safely
   const getParam = (key: string): string => {
     const value = params[key];
     if (Array.isArray(value)) return value[0];
@@ -32,7 +39,6 @@ const ClientProfile = () => {
     return '';
   };
 
-  // Pre-filled if editing, empty if new user
   const [name, setName] = useState(getParam('name'));
   const [cnic, setCnic] = useState('');
   const [age, setAge] = useState('');
@@ -83,8 +89,15 @@ const ClientProfile = () => {
   };
 
   const handleSaveProfile = () => {
-    if (!name || !cnic || !age || !phone || !address) {
-      Alert.alert('Incomplete Info', 'Please fill in all fields.');
+    const nameError = validateFullName(name);
+    const cnicError = validateCNIC(cnic);
+    const ageError = validateAge(age);
+    const phoneError = validatePhoneNumber(phone);
+    const addressError = validateAddress(address);
+
+    if (nameError || cnicError || ageError || phoneError || addressError) {
+      const firstError = nameError || cnicError || ageError || phoneError || addressError;
+      Alert.alert('Validation Error', firstError);
       return;
     }
 
@@ -98,14 +111,12 @@ const ClientProfile = () => {
       dp: profileImage || '',
     };
 
-    // 🔁 If coming from menu/profile → editing mode, return back to profile screen
     if (getParam('editing') === 'true') {
       router.replace({
-        pathname: '/(tabs)/Client/MenuOptions/ProfileScreen',
+        pathname: '/(tabs)/Client/MenuOptions/Profile/ProfileScreen',
         params: profileData,
       });
     } else {
-      // 🆕 If new user during signup, move forward
       router.push({
         pathname: '/GrantLocation',
         params: profileData,
@@ -136,34 +147,11 @@ const ClientProfile = () => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <InputButton
-              placeholder="Full Name"
-              value={name}
-              onChangeText={setName}
-            />
-            <InputButton
-              placeholder="CNIC"
-              value={cnic}
-              onChangeText={setCnic}
-              keyboardType="numeric"
-            />
-            <InputButton
-              placeholder="Age"
-              value={age}
-              onChangeText={setAge}
-              keyboardType="numeric"
-            />
-            <InputButton
-              placeholder="Phone Number"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-            <InputButton
-              placeholder="Address"
-              value={address}
-              onChangeText={setAddress}
-            />
+            <InputButton placeholder="Full Name" value={name} onChangeText={setName} />
+            <InputButton placeholder="CNIC" value={cnic} onChangeText={setCnic} keyboardType="numeric" />
+            <InputButton placeholder="Age" value={age} onChangeText={setAge} keyboardType="numeric" />
+            <InputButton placeholder="Phone Number" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+            <InputButton placeholder="Address" value={address} onChangeText={setAddress} />
 
             <View style={{ marginTop: 40 }}>
               <MyButton title="Save Profile" onPress={handleSaveProfile} />

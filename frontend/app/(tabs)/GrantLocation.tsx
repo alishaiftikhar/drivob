@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import BackgroundOne from '../../components/BackgroundDesign';
 import Colors from '@/constants/Color';
 import { useRouter } from 'expo-router';
@@ -11,18 +10,22 @@ const GrantLocation = () => {
   return (
     <BackgroundOne text="Location">
       <View style={styles.container}>
-
-        {/* Centered Simple Icon */}
-        <Ionicons name="location-outline" size={120} color={Colors.primary} style={styles.icon} />
+        
+        {/* Custom Location Image Icon */}
+        <Image
+          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRTUK7yX5T8YXKBUbAwCyW8KFCkRDxCQECYjA&s' }}
+          style={styles.icon}
+          resizeMode="contain"
+        />
 
         {/* Title */}
         <Text style={styles.title}>Grant Location Access</Text>
 
-        {/* Lifted Button */}
+        {/* Button */}
         <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/LiveLocation')}>
           <Text style={styles.buttonText}>Enable Location</Text>
         </TouchableOpacity>
-        
+
       </View>
     </BackgroundOne>
   );
@@ -38,8 +41,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
 
-  // Removed icon background styling
   icon: {
+    width: 150,
+    height: 150,
     marginBottom: 50,
   },
 
@@ -52,7 +56,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
 
-  // Raised Button with more top margin
   button: {
     backgroundColor: Colors.primary,
     paddingVertical: 18,
@@ -63,7 +66,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
-    marginTop: 10, // keeps it raised
+    marginTop: 10,
   },
 
   buttonText: {

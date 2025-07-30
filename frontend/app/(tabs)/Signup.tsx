@@ -41,7 +41,9 @@ const Signup = () => {
     if (passwordError) return Alert.alert(passwordError);
     if (confirmPasswordError) return Alert.alert(confirmPasswordError);
 
-    router.push('/OTP');
+    // ✅ Simulate success (no backend)
+    Alert.alert('Signup successful!', 'You can now proceed.');
+    router.push('/OTP'); // Navigate to OTP screen or next step
   };
 
   return (
@@ -105,8 +107,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 0, // 👉 more top spacing
-    paddingBottom: 200, // 👉 enough bottom padding to scroll when keyboard shows
+    paddingTop: 0,
+    paddingBottom: 200,
     gap: 2,
   },
   buttonWrapper: {
