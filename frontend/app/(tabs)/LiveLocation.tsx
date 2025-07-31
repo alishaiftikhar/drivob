@@ -56,7 +56,7 @@ const LiveLocation = () => {
       <View style={styles.buttonContainer}>
         <MyButton
           title="Save Location" // ✅ Fix 1
-          onPress={() => router.push('/(tabs)/Client/RideDetail')} // ✅ Fix 2
+          onPress={() => router.push('/(tabs)/Client/Ride/RideDetails')} // ✅ Fix 2
         />
       </View>
     </View>

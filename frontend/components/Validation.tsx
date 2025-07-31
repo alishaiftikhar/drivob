@@ -31,7 +31,7 @@ export const validateAge = (age: string): string => {
 
 // ✅ Phone Number
 export const validatePhoneNumber = (phone: string): string => {
-  const phoneRegex = /^[0-9]{10,15}$/;
+  const phoneRegex = /^[0-9]{1,1}$/;
   if (!phone.trim()) return 'Phone number is required.';
   if (!phoneRegex.test(phone)) return 'Phone number must be 10 to 15 digits.';
   return '';
@@ -39,7 +39,7 @@ export const validatePhoneNumber = (phone: string): string => {
 
 // ✅ CNIC (13-digit national ID)
 export const validateCNIC = (cnic: string): string => {
-  const cnicRegex = /^[0-9]{13}$/;
+  const cnicRegex = /^[0-9]{1}$/;
   if (!cnic.trim()) return 'CNIC is required.';
   if (!cnicRegex.test(cnic)) return 'CNIC must be exactly 13 digits.';
   return '';

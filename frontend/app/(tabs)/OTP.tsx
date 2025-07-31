@@ -1,5 +1,3 @@
-// File: app/OTP.tsx
-
 import React, { useRef, useState } from 'react';
 import {
   View,
@@ -16,39 +14,48 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import BackgroundOne from '../../components/BackgroundDesign';
 import MyButton from '@/components/MyButton';
+import Colors from '@/constants/Color';
 
 const OTP = () => {
   const router = useRouter();
-  const { from } = useLocalSearchParams(); // "signup" or "login"
+  const { next } = useLocalSearchParams(); // either 'forgot' or 'signup'
 
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const inputs = useRef<TextInput[]>([]);
 
   const handleChange = (text: string, index: number) => {
-    const newOtp = [...otp];
-    newOtp[index] = text;
-    setOtp(newOtp);
+    if (/^\d$/.test(text)) {
+      const newOtp = [...otp];
+      newOtp[index] = text;
+      setOtp(newOtp);
 
-    // Auto-focus next input
-    if (text && index < inputs.current.length - 1) {
-      inputs.current[index + 1]?.focus();
+      if (index < 5) {
+        inputs.current[index + 1]?.focus();
+      }
+    } else if (text === '') {
+      const newOtp = [...otp];
+      newOtp[index] = '';
+      setOtp(newOtp);
+      if (index > 0) {
+        inputs.current[index - 1]?.focus();
+      }
     }
   };
 
-  const handleSubmit = () => {
-    const code = otp.join('');
-    if (code.length < 4) {
-      Alert.alert('Incomplete OTP', 'Please enter all 4 digits.');
+  const handleVerify = () => {
+    const fullOtp = otp.join('');
+    if (fullOtp.length !== 6) {
+      Alert.alert('Please enter a valid 6-digit OTP');
       return;
     }
 
-    // Conditional navigation
-    if (from === 'signup') {
-      router.push('/(tabs)/TypeSelector');
-    } else if (from === 'login') {
+    // Determine navigation based on source
+    const origin = typeof next === 'string' ? next.toLowerCase() : '';
+
+    if (origin === 'Forget Password?') {
       router.push('/NewPassword');
     } else {
-      Alert.alert('Navigation Error', 'Unknown source screen.');
+      router.push('/TypeSelector');
     }
   };
 
@@ -57,26 +64,35 @@ const OTP = () => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <BackgroundOne />
+        <BackgroundOne text="OTP">
+          <View style={styles.container}>
+            <Text style={styles.title}>Enter the 6-digit OTP</Text>
 
-        <View style={styles.container}>
-          <Text style={styles.title}>Enter OTP</Text>
-          <View style={styles.otpContainer}>
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => (inputs.current[index] = ref)}
-                style={styles.otpInput}
-                keyboardType="numeric"
-                maxLength={1}
-                value={digit}
-                onChangeText={(text) => handleChange(text, index)}
-              />
-            ))}
+            <View style={styles.otpBoxContainer}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  style={styles.otpBox}
+                  keyboardType="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChangeText={(text) => handleChange(text, index)}
+                  ref={(ref) => {
+                    if (ref) inputs.current[index] = ref;
+                  }}
+                />
+              ))}
+            </View>
+
+            <MyButton title="Verify OTP" onPress={handleVerify} />
+
+            <Text style={styles.infoText}>
+              Please check your email for the OTP.
+            </Text>
           </View>
-          <MyButton title="Verify OTP" onPress={handleSubmit} />
-        </View>
+        </BackgroundOne>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
@@ -86,30 +102,38 @@ export default OTP;
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: '35%',
-    width: '100%',
+    flex: 1,
+    paddingTop: 100,
     alignItems: 'center',
+    paddingHorizontal: 20,
+    gap: 30,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
+    color: Colors.primary,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#fff',
   },
-  otpContainer: {
+  otpBoxContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '60%',
-    marginBottom: 20,
+    justifyContent: 'center',
+    gap: 8,
   },
-  otpInput: {
-    borderBottomWidth: 2,
-    borderColor: '#fff',
-    width: 40,
-    height: 50,
-    fontSize: 24,
+  otpBox: {
+    width: 50,
+    height: 55,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderRadius: 10,
     textAlign: 'center',
-    color: '#fff',
+    fontSize: 24,
+    color: Colors.primary,
+    backgroundColor: '#fff',
+  },
+  infoText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: Colors.primary,
+    textAlign: 'center',
   },
 });
