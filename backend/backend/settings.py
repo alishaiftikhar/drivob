@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     'drivo',
 ]
 
-AUTH_USER_MODEL = 'drivo.User'  # Custom user model
+AUTH_USER_MODEL = 'drivo.CustomUser'  # Custom user model
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

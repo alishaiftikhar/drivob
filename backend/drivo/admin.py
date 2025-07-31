@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import User, DriverProfile, ClientProfile, Ride, Payment, Review
+from .models import CustomUser, DriverProfile, ClientProfile, Ride, Payment, Review
 
-@admin.register(User)
+@admin.register(CustomUser)
 class UserAdmin(admin.ModelAdmin):
     list_display = ('username', 'email', 'is_driver', 'is_client', 'is_staff')
     list_filter = ('is_driver', 'is_client', 'is_staff')
