@@ -6,13 +6,13 @@ from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate
-from .models import CustomUser, EmailOTP, DriverProfile, ClientProfile, Ride, Payment, Review
+from .models import User, EmailOTP, DriverProfile, ClientProfile, Ride, Payment, Review
 from drivo.serializers import (UserSerializer, DriverProfileSerializer, ClientProfileSerializer,
     RideSerializer, PaymentSerializer, ReviewSerializer
 )
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
+    queryset = User.objects.all()
     serializer_class = UserSerializer
 
 class DriverProfileViewSet(viewsets.ModelViewSet):
@@ -39,7 +39,7 @@ class SignupView(APIView):
     def post(self, request):
         data = request.data
         try:
-            user = CustomUser.objects.create(
+            user = User.objects.create(
                 username=data['username'],
                 email=data.get('email', ''),
                 password=make_password(data['password']),
@@ -60,7 +60,7 @@ class CheckCNICView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         cnic = request.data.get("cnic")
-        exists = CustomUser.objects.filter(cnic=cnic).exists()
+        exists = User.objects.filter(cnic=cnic).exists()
         return Response({"exists": exists})
 
 class CheckLicenseView(APIView):
@@ -68,18 +68,18 @@ class CheckLicenseView(APIView):
     def post(self, request):
         license_number = request.data.get("license_number")
         try:
-            user = CustomUser.objects.get(license_number=license_number)
+            user = User.objects.get(license_number=license_number)
             if user.license_expiry_date and user.license_expiry_date < timezone.now().date():
                 return Response({"expired": True})
             return Response({"valid": True})
-        except CustomUser.DoesNotExist:
+        except User.DoesNotExist:
             return Response({"exists": False}, status=404)
 
 class CheckEmailUniqueView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         email = request.data.get("email")
-        exists = CustomUser.objects.filter(email=email).exists()
+        exists = User.objects.filter(email=email).exists()
         return Response({"exists": exists})
 
 class IsLoggedInView(APIView):
@@ -87,9 +87,9 @@ class IsLoggedInView(APIView):
     def post(self, request):
         email = request.data.get("email")
         try:
-            user = CustomUser.objects.get(email=email)
+            user = User.objects.get(email=email)
             return Response({"logged_in": user.is_logged_in})
-        except CustomUser.DoesNotExist:
+        except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
 
 
@@ -99,7 +99,7 @@ class VerifyOTPView(APIView):
         email = request.data.get('email')
         otp = request.data.get('otp')
         try:
-            user = CustomUser.objects.get(email=email)
+            user = User.objects.get(email=email)
             otp_obj = EmailOTP.objects.get(user=user)
             if otp_obj.otp != otp:
                 return Response({"valid": False, "message": "Incorrect OTP"}, status=400)
@@ -115,8 +115,8 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
         try:
-            user = CustomUser.objects.get(email=email)
-        except CustomUser.DoesNotExist:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
 
         user = authenticate(request, username=user.username, password=password)

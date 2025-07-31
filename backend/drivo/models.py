@@ -6,7 +6,7 @@ from django.core.validators import RegexValidator, MinValueValidator, MaxValueVa
 phone_validator = RegexValidator(regex=r'^\+?\d{10,15}$', message="Enter a valid phone number")
 
 # User with roles
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     is_driver = models.BooleanField(default=False)
     is_client = models.BooleanField(default=False)
     cnic = models.CharField(max_length=15, unique=True)
@@ -26,7 +26,7 @@ class EmailOTP(models.Model):
  
 # Driver Profile
 class DriverProfile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='driver_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='driver_profile')
     full_name = models.CharField(max_length=100)
     cnic = models.CharField(max_length=15)
     age = models.IntegerField()
@@ -40,7 +40,7 @@ class DriverProfile(models.Model):
 
 # Client Profile
 class ClientProfile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='client_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='client_profile')
     full_name = models.CharField(max_length=100)
     cnic = models.CharField(max_length=15)
     age = models.IntegerField()

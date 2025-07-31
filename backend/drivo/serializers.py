@@ -1,8 +1,8 @@
 from rest_framework import serializers
-from drivo.models import CustomUser, DriverProfile, ClientProfile, Ride, Payment, Review
+from drivo.models import User, DriverProfile, ClientProfile, Ride, Payment, Review
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
+        model = User
         fields = ['id', 'username', 'email', 'is_driver', 'is_client']
 
 class DriverProfileSerializer(serializers.ModelSerializer):
