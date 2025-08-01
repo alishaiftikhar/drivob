@@ -1,9 +1,13 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
+from django.core.mail import send_mail
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from .models import EmailOTP
+from django.utils import timezone
+from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
-from django.utils import timezone
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate
 from .models import User, EmailOTP, DriverProfile, ClientProfile, Ride, Payment, Review
@@ -130,3 +134,52 @@ class LoginView(APIView):
                 'message': 'Login successful'
             })
         return Response({"error": "Invalid password"}, status=400)
+@api_view(['POST'])
+def send_email_otp(request):
+    email = request.data.get('email')
+    otp = str(random.randint(100000, 999999))
+
+    obj, created = EmailOTP.objects.update_or_create(
+        email=email,
+        defaults={
+            'otp_code': otp,
+            'created_at': timezone.now(),
+            'is_verified': False
+        }
+    )
+
+    send_mail(
+        subject='Your Email Verification OTP',
+        message=f'Your OTP is {otp}',
+        from_email='your-email@example.com',
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+    return Response({'message': 'OTP sent to email'})
+
+@api_view(['POST'])
+def verify_email_otp(request):
+    email = request.data.get('email')
+    otp = request.data.get('otp')
+
+    try:
+        obj = EmailOTP.objects.get(email=email, otp_code=otp)
+        if (timezone.now() - obj.created_at).seconds > 300:
+            return Response({'message': 'OTP expired', 'status': False})
+
+        obj.is_verified = True
+        obj.save()
+        return Response({'message': 'Email verified successfully', 'status': True})
+    except EmailOTP.DoesNotExist:
+        return Response({'message': 'Invalid OTP', 'status': False})
+@api_view(['GET'])
+def test_email_view(request):
+    send_mail(
+        subject='OTP Test Email',
+        message='This is a test email to verify Django email settings.',
+        from_email=None,  # Uses EMAIL_HOST_USER from settings
+        recipient_list=['alishaiftikhar025@gmail.com'],  # ✅ Replace with your test email
+        fail_silently=False,
+    )
+    return JsonResponse({'message': 'Test email sent successfully.'})
