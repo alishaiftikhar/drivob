@@ -125,3 +125,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CORS_ALLOWED_ORIGINS = [
+    "http://192.168.43.20:19006",  # for Expo web
+    "http://localhost:19006",      # optional fallback
+]
+

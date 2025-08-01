@@ -1,13 +1,13 @@
 import React from 'react';
 import { Stack } from 'expo-router';
+import { RideProvider } from './(tabs)/Client/Ride/RideContext';
 
-const Layout = () => {
+export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="/index" />
-      <Stack.Screen name="/Signup" />
-    </Stack>
+    <RideProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* All your screens will be auto-loaded based on the folder structure */}
+      </Stack>
+    </RideProvider>
   );
-};
-
-export default Layout;
+}

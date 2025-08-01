@@ -3,60 +3,49 @@ import {
   View,
   Text,
   TextInput,
-  Alert,
   StyleSheet,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Alert,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-
 import BackgroundOne from '../../components/BackgroundDesign';
-import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
+import MyButton from '@/components/MyButton';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const OTP = () => {
   const router = useRouter();
-  const { next } = useLocalSearchParams(); // either 'forgot' or 'signup'
-
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const { next } = useLocalSearchParams();
+  const [otp, setOtp] = useState(Array(6).fill(''));
   const inputs = useRef<TextInput[]>([]);
 
   const handleChange = (text: string, index: number) => {
-    if (/^\d$/.test(text)) {
-      const newOtp = [...otp];
-      newOtp[index] = text;
-      setOtp(newOtp);
+    if (text.length > 1) return;
 
-      if (index < 5) {
-        inputs.current[index + 1]?.focus();
-      }
-    } else if (text === '') {
-      const newOtp = [...otp];
-      newOtp[index] = '';
-      setOtp(newOtp);
-      if (index > 0) {
-        inputs.current[index - 1]?.focus();
-      }
+    const newOtp = [...otp];
+    newOtp[index] = text;
+    setOtp(newOtp);
+
+    if (text && index < 5) {
+      inputs.current[index + 1]?.focus();
+    }
+    if (!text && index > 0) {
+      inputs.current[index - 1]?.focus();
     }
   };
 
   const handleVerify = () => {
-    const fullOtp = otp.join('');
-    if (fullOtp.length !== 6) {
-      Alert.alert('Please enter a valid 6-digit OTP');
+    const enteredOTP = otp.join('');
+    if (enteredOTP.length !== 6) {
+      Alert.alert('Please enter the complete 6-digit OTP');
       return;
     }
 
-    // Determine navigation based on source
-    const origin = typeof next === 'string' ? next.toLowerCase() : '';
-
-    if (origin === 'Forget Password?') {
-      router.push('/NewPassword');
-    } else {
-      router.push('/TypeSelector');
-    }
+    const redirectTo = typeof next === 'string' ? next : 'TypeSelector';
+    router.push('/NewPassword');
   };
 
   return (
@@ -67,31 +56,31 @@ const OTP = () => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
         <BackgroundOne text="OTP">
-          <View style={styles.container}>
-            <Text style={styles.title}>Enter the 6-digit OTP</Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.title}>Enter 6-digit OTP</Text>
 
-            <View style={styles.otpBoxContainer}>
+            <View style={styles.otpContainer}>
               {otp.map((digit, index) => (
                 <TextInput
                   key={index}
-                  style={styles.otpBox}
+                  ref={(ref) => (inputs.current[index] = ref!)}
+                  style={styles.otpInput}
                   keyboardType="numeric"
                   maxLength={1}
                   value={digit}
                   onChangeText={(text) => handleChange(text, index)}
-                  ref={(ref) => {
-                    if (ref) inputs.current[index] = ref;
-                  }}
                 />
               ))}
             </View>
 
-            <MyButton title="Verify OTP" onPress={handleVerify} />
-
-            <Text style={styles.infoText}>
-              Please check your email for the OTP.
-            </Text>
-          </View>
+            <View style={{ marginTop: 60 }}>
+              <MyButton title="Verify OTP" onPress={handleVerify} />
+            </View>
+          </ScrollView>
         </BackgroundOne>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
@@ -101,39 +90,33 @@ const OTP = () => {
 export default OTP;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 100,
+  scrollContainer: {
+    flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
-    gap: 30,
+    paddingTop: 100,
+    paddingBottom: 200,
+    gap: 20,
   },
   title: {
     fontSize: 20,
     color: Colors.primary,
     fontWeight: 'bold',
-    marginBottom: 20,
   },
-  otpBoxContainer: {
+  otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
-  otpBox: {
-    width: 50,
+  otpInput: {
+    width: 45,
     height: 55,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: Colors.primary,
-    borderRadius: 10,
-    textAlign: 'center',
-    fontSize: 24,
-    color: Colors.primary,
-    backgroundColor: '#fff',
-  },
-  infoText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: Colors.primary,
+    backgroundColor: Colors.background,
+    color: 'black',
+    fontSize: 22,
     textAlign: 'center',
   },
 });

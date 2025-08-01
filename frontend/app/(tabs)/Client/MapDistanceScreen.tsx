@@ -1,22 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import axios from 'axios';
 import MyButton from '@/components/MyButton';
-import Colors from '@/constants/Color';
 
-const fuelRates: Record<string, number> = {
+const fuelRates = {
   Petrol: 280,
   Diesel: 265,
   Electric: 20,
 };
 
-const vehicleMultiplier: Record<string, number> = {
+const vehicleMultiplier = {
   Car: 1.2,
   Bike: 0.6,
   Rickshaw: 0.9,
 };
+
+type FuelType = keyof typeof fuelRates;
+type VehicleType = keyof typeof vehicleMultiplier;
 
 const MapDistanceScreen = () => {
   const router = useRouter();
@@ -25,182 +26,167 @@ const MapDistanceScreen = () => {
     sourceLng,
     destLat,
     destLng,
-    fuelType,
     vehicleType,
-    time,
-  } = useLocalSearchParams();
-
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [durationMin, setDurationMin] = useState<number | null>(null);
-  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
-  const [shortestRouteCoords, setShortestRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
-  const [longestRouteCoords, setLongestRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+    fuelType,
+  } = useLocalSearchParams<{
+    sourceLat: string;
+    sourceLng: string;
+    destLat: string;
+    destLng: string;
+    vehicleType: string;
+    fuelType: string;
+  }>();
 
   const source = {
-    latitude: parseFloat(sourceLat as string),
-    longitude: parseFloat(sourceLng as string),
+    latitude: parseFloat(sourceLat),
+    longitude: parseFloat(sourceLng),
   };
 
   const destination = {
-    latitude: parseFloat(destLat as string),
-    longitude: parseFloat(destLng as string),
+    latitude: parseFloat(destLat),
+    longitude: parseFloat(destLng),
   };
 
-  const timeStr = Array.isArray(time) ? time[0] : time || '';
-  const isNight =
-    timeStr.toLowerCase().includes('pm') ||
-    Number(timeStr.split(':')[0]) >= 21;
+  const [distance, setDistance] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
 
-  const calculatePrice = (km: number): number => {
-    const base = fuelRates[fuelType as string] || 250;
-    const multiplier = vehicleMultiplier[vehicleType as string] || 1;
-    const nightFactor = isNight ? 1.25 : 1;
-    return Math.round(km * base * multiplier * nightFactor);
-  };
-
-  const fetchRoutes = async () => {
+  const fetchRoute = async () => {
     try {
-      const response = await axios.get(
-        `https://router.project-osrm.org/route/v1/driving/${source.longitude},${source.latitude};${destination.longitude},${destination.latitude}`,
-        {
-          params: {
-            overview: 'full',
-            alternatives: true,
-            geometries: 'geojson',
-          },
-        }
-      );
+      const url = `http://router.project-osrm.org/route/v1/driving/${source.longitude},${source.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
 
-      const routes = response.data.routes;
-      if (!routes || routes.length === 0) {
-        throw new Error('No routes found');
+      if (!data.routes || data.routes.length === 0) {
+        throw new Error('No route found');
       }
 
-      const sortedRoutes = [...routes].sort((a, b) => a.distance - b.distance);
-      const shortest = sortedRoutes[0];
-      const longest = sortedRoutes[sortedRoutes.length - 1];
+      const route = data.routes[0];
 
-      const km = shortest.distance / 1000;
-      const min = shortest.duration / 60;
-
-      setDistanceKm(km);
-      setDurationMin(min);
-      setEstimatedPrice(calculatePrice(km));
-
-      setShortestRouteCoords(
-        shortest.geometry.coordinates.map(([lng, lat]: number[]) => ({
+      setDistance(route.distance / 1000); // meters to km
+      setDuration(route.duration / 60); // seconds to mins
+      setRouteCoords(
+        route.geometry.coordinates.map(([lng, lat]: [number, number]) => ({
           latitude: lat,
           longitude: lng,
         }))
       );
-
-      setLongestRouteCoords(
-        longest.geometry.coordinates.map(([lng, lat]: number[]) => ({
-          latitude: lat,
-          longitude: lng,
-        }))
-      );
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Failed to load route. Please try again.');
+    } catch (err) {
+      Alert.alert('Error', 'Could not fetch route. Try again.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRoutes();
+    fetchRoute();
   }, []);
 
-  const handleDone = () => {
-    router.push('/(tabs)/Client/DriverList');
-  };
+  const validFuelType: FuelType = fuelType in fuelRates ? (fuelType as FuelType) : 'Petrol';
+  const validVehicleType: VehicleType = vehicleType in vehicleMultiplier ? (vehicleType as VehicleType) : 'Car';
+
+  const fuelRate = fuelRates[validFuelType];
+  const multiplier = vehicleMultiplier[validVehicleType];
+  const estimatedCost = distance * fuelRate * multiplier;
+  const driverPayment = estimatedCost * 0.7; // Assuming driver gets 70%
 
   if (loading) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={{ marginTop: 12, fontSize: 16, color: Colors.primary }}>
-          Finding the best route...
-        </Text>
+        <ActivityIndicator size="large" color="purple" />
+        <Text style={styles.loaderText}>Calculating route...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1 }}>
       <MapView
-        style={styles.map}
+        style={{ flex: 1 }}
         initialRegion={{
           latitude: source.latitude,
           longitude: source.longitude,
-          latitudeDelta: 0.5,
-          longitudeDelta: 0.5,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
         }}
       >
-        <Marker coordinate={source} title="Source" pinColor="green" />
+        <Marker coordinate={source} title="Source Location" pinColor="green" />
         <Marker coordinate={destination} title="Destination" pinColor="red" />
-        {longestRouteCoords.length > 0 && (
-          <Polyline coordinates={longestRouteCoords} strokeColor="green" strokeWidth={3} />
-        )}
-        {shortestRouteCoords.length > 0 && (
-          <Polyline coordinates={shortestRouteCoords} strokeColor="red" strokeWidth={4} />
+        {routeCoords.length > 0 && (
+          <Polyline coordinates={routeCoords} strokeColor="blue" strokeWidth={5} />
         )}
       </MapView>
 
-      <View style={styles.detailsBox}>
-        <Text style={styles.detailText}>📏 Distance: {distanceKm?.toFixed(2)} KM</Text>
-        <Text style={styles.detailText}>⏱ Duration: {durationMin?.toFixed(0)} min</Text>
-        <Text style={styles.detailText}>💸 Payment: Rs. {estimatedPrice}</Text>
-      </View>
+      {/* Detail Section */}
+      <View style={styles.detailContainer}>
+        <Text style={styles.heading}>Ride Summary</Text>
 
-      <View style={styles.buttonBox}>
-        <MyButton title="Done" onPress={handleDone} />
+        <Text style={styles.label}>🚩 Source:</Text>
+        <Text style={styles.value}>
+          Latitude: {source.latitude.toFixed(4)}, Longitude: {source.longitude.toFixed(4)}
+        </Text>
+
+        <Text style={styles.label}>🏁 Destination:</Text>
+        <Text style={styles.value}>
+          Latitude: {destination.latitude.toFixed(4)}, Longitude: {destination.longitude.toFixed(4)}
+        </Text>
+
+        <Text style={styles.label}>📏 Distance:</Text>
+        <Text style={styles.value}>{distance.toFixed(2)} km</Text>
+
+        <Text style={styles.label}>⏱️ Estimated Time:</Text>
+        <Text style={styles.value}>{duration.toFixed(1)} mins</Text>
+
+        <Text style={styles.label}>💰 Estimated Driver Payment:</Text>
+        <Text style={styles.value}>Rs. {driverPayment.toFixed(0)}</Text>
+
+        <View style={{ marginTop: 15 }}>
+          <MyButton title="Done" onPress={() => router.push('/(tabs)/Client/DriverList')} />
+        </View>
       </View>
     </View>
   );
 };
 
-export default MapDistanceScreen;
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f4f4f4',
-  },
-  map: {
-    flex: 1,
-  },
-  detailsBox: {
-    position: 'absolute',
-    bottom: 80,
-    left: 15,
-    right: 15,
-    backgroundColor: 'white',
-    padding: 18,
-    borderRadius: 12,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 4,
-  },
-  detailText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: Colors.primary,
-  },
-  buttonBox: {
-    position: 'absolute',
-    bottom: 20,
-    left: 15,
-    right: 15,
-  },
   loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loaderText: {
+    marginTop: 10,
+    fontSize: 18,
+    color: 'purple',
+  },
+  detailContainer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  heading: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  label: {
+    color: '#ccc',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  value: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
+
+export default MapDistanceScreen;
