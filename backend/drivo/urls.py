@@ -27,4 +27,3 @@ urlpatterns = [
     path('verify-email-otp/', verify_email_otp, name='verify_email_otp'),
     path('test-email/', test_email_view, name='test-email'),
 ]
-
