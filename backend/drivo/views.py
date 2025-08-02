@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
 from .models import User, EmailOTP, DriverProfile, ClientProfile, Ride, Payment, Review
 from drivo.serializers import (UserSerializer, DriverProfileSerializer, ClientProfileSerializer,
@@ -18,14 +18,20 @@ from drivo.serializers import (UserSerializer, DriverProfileSerializer, ClientPr
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
 class DriverProfileViewSet(viewsets.ModelViewSet):
     queryset = DriverProfile.objects.all()
     serializer_class = DriverProfileSerializer
+    permission_classes = [AllowAny] 
 
 class ClientProfileViewSet(viewsets.ModelViewSet):
     queryset = ClientProfile.objects.all()
     serializer_class = ClientProfileSerializer
+    permission_classes = [AllowAny] 
 
 class RideViewSet(viewsets.ModelViewSet):
     queryset = Ride.objects.all()
@@ -40,6 +46,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
 
 class SignupView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         data = request.data
         try:
@@ -95,8 +102,7 @@ class IsLoggedInView(APIView):
             return Response({"logged_in": user.is_logged_in})
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=404)
-
-
+    
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
