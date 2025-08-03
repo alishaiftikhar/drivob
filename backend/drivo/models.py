@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator
 
 # Common phone validator
@@ -9,7 +10,21 @@ phone_validator = RegexValidator(regex=r'^\+?\d{10,15}$', message="Enter a valid
 class User(AbstractUser):
     is_driver = models.BooleanField(default=False)
     is_client = models.BooleanField(default=False)
+    cnic = models.CharField(max_length=15, unique=True)
+    license_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    license_expiry_date = models.DateField(null=True, blank=True)
+    is_logged_in = models.BooleanField(default=False)
 
+   # Email OTP model for email verification
+class EmailOTP(models.Model):
+    email = models.EmailField(unique=True)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.email} - OTP: {self.otp_code}"
+ 
 # Driver Profile
 class DriverProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='driver_profile')
@@ -89,3 +104,14 @@ class Review(models.Model):
     def __str__(self):
         return f"Review by {self.client.full_name} - {self.rating} stars"
 
+# OTP model for phone number verification
+class OTP(models.Model):
+    phone_number = models.CharField(max_length=15)
+    otp_code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_valid(self):
+        return (timezone.now() - self.created_at).seconds < 300  # 5 minutes validity
+
+    def __str__(self):
+        return f"{self.phone_number} - {self.otp_code}"

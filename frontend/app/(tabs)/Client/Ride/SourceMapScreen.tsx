@@ -1,18 +1,16 @@
-// File: SourceMapScreen.tsx
-
 import React, { useState } from 'react';
 import {
   View,
-  Text,
+  TextInput,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, MapPressEvent } from 'react-native-maps';
+import MapView, { Marker, MapPressEvent, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
-import { useRide } from './RideContext'; // Ensure correct context path
+import { useRide } from './RideContext';
+import MyButton from '@/components/MyButton'; // ✅ Import your custom button
 
 const SourceMapScreen = () => {
   const router = useRouter();
@@ -25,6 +23,14 @@ const SourceMapScreen = () => {
 
   const [formattedAddress, setFormattedAddress] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  const [searchText, setSearchText] = useState<string>('');
+  const [region, setRegion] = useState<Region>({
+    latitude: 31.5204,
+    longitude: 74.3587,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
 
   const handleMapPress = async (event: MapPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
@@ -47,6 +53,40 @@ const SourceMapScreen = () => {
     }
   };
 
+  const handleSearch = async () => {
+    if (!searchText) return;
+    setLoading(true);
+    try {
+      const results = await Location.geocodeAsync(searchText);
+      if (results.length > 0) {
+        const { latitude, longitude } = results[0];
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        setSelectedLocation({ latitude, longitude });
+
+        const addressResponse = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        const address = addressResponse[0];
+        const formatted = `${address.name || ''}, ${address.city || ''}, ${address.region || ''}, ${address.country || ''}`;
+        setFormattedAddress(formatted);
+      } else {
+        alert('Location not found');
+      }
+    } catch (error) {
+      alert('Error while searching location');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConfirm = () => {
     if (selectedLocation && formattedAddress) {
       setSource({
@@ -59,14 +99,26 @@ const SourceMapScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* 🔍 Search Bar */}
+      <View style={styles.searchBar}>
+        <TextInput
+          placeholder="Search for a location..."
+          placeholderTextColor="#999"
+          style={styles.searchInput}
+          value={searchText}
+          onChangeText={setSearchText}
+        />
+        <MyButton
+          title="Search"
+          onPress={handleSearch}
+          style={styles.searchBtnOverride}
+        />
+      </View>
+
+      {/* 🗺️ Map View */}
       <MapView
         style={styles.map}
-        initialRegion={{
-          latitude: 31.5204,
-          longitude: 74.3587,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
+        region={region}
         onPress={handleMapPress}
       >
         {selectedLocation && (
@@ -74,14 +126,16 @@ const SourceMapScreen = () => {
         )}
       </MapView>
 
+      {/* ✅ Confirm Button */}
       {selectedLocation && !loading && (
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmText}>
-            {formattedAddress || 'Confirm Source'}
-          </Text>
-        </TouchableOpacity>
+        <MyButton
+          title={formattedAddress || 'Confirm Source'}
+          onPress={handleConfirm}
+          style={styles.confirmBtnOverride}
+        />
       )}
 
+      {/* ⏳ Loader */}
       {loading && (
         <ActivityIndicator
           style={styles.loader}
@@ -98,36 +152,46 @@ export default SourceMapScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1c1c1c',
+    backgroundColor: '#dbd1d1ff',
   },
   map: {
     width: Dimensions.get('window').width,
     height: '100%',
   },
-  confirmButton: {
+  searchBar: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f0f0ff',
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    zIndex: 50,
+    elevation: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: 'white',
+    paddingLeft: 8,
+  },
+  searchBtnOverride: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  confirmBtnOverride: {
     position: 'absolute',
     bottom: 40,
     left: 30,
     right: 30,
-    backgroundColor: '#673AB7',
-    paddingVertical: 16,
-    borderRadius: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 7,
-  },
-  confirmText: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   loader: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 100,
     alignSelf: 'center',
   },
 });

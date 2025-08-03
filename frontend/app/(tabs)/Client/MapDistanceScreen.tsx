@@ -4,20 +4,7 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import MyButton from '@/components/MyButton';
 
-const fuelRates = {
-  Petrol: 280,
-  Diesel: 265,
-  Electric: 20,
-};
-
-const vehicleMultiplier = {
-  Car: 1.2,
-  Bike: 0.6,
-  Rickshaw: 0.9,
-};
-
-type FuelType = keyof typeof fuelRates;
-type VehicleType = keyof typeof vehicleMultiplier;
+const perHourDriverRate = 300;
 
 const MapDistanceScreen = () => {
   const router = useRouter();
@@ -51,6 +38,7 @@ const MapDistanceScreen = () => {
   const [duration, setDuration] = useState(0);
   const [loading, setLoading] = useState(true);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [crossCountry, setCrossCountry] = useState(false);
 
   const fetchRoute = async () => {
     try {
@@ -63,7 +51,6 @@ const MapDistanceScreen = () => {
       }
 
       const route = data.routes[0];
-
       setDistance(route.distance / 1000); // meters to km
       setDuration(route.duration / 60); // seconds to mins
       setRouteCoords(
@@ -72,8 +59,28 @@ const MapDistanceScreen = () => {
           longitude: lng,
         }))
       );
+
+      // ✅ Real Country Validation using OpenStreetMap (Nominatim)
+      const [srcRes, dstRes] = await Promise.all([
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${source.latitude}&lon=${source.longitude}&zoom=3&addressdetails=1`),
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${destination.latitude}&lon=${destination.longitude}&zoom=3&addressdetails=1`),
+      ]);
+
+      const [srcData, dstData] = await Promise.all([srcRes.json(), dstRes.json()]);
+
+      const srcCountry = srcData?.address?.country;
+      const dstCountry = dstData?.address?.country;
+
+      console.log('📍 Source Country:', srcCountry);
+      console.log('📍 Destination Country:', dstCountry);
+
+      if (!srcCountry || !dstCountry) {
+        Alert.alert('Error', 'Could not determine country information.');
+      }
+
+      setCrossCountry(srcCountry !== dstCountry);
     } catch (err) {
-      Alert.alert('Error', 'Could not fetch route. Try again.');
+      Alert.alert('Error', 'Could not fetch route or country data.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -84,13 +91,7 @@ const MapDistanceScreen = () => {
     fetchRoute();
   }, []);
 
-  const validFuelType: FuelType = fuelType in fuelRates ? (fuelType as FuelType) : 'Petrol';
-  const validVehicleType: VehicleType = vehicleType in vehicleMultiplier ? (vehicleType as VehicleType) : 'Car';
-
-  const fuelRate = fuelRates[validFuelType];
-  const multiplier = vehicleMultiplier[validVehicleType];
-  const estimatedCost = distance * fuelRate * multiplier;
-  const driverPayment = estimatedCost * 0.7; // Assuming driver gets 70%
+  const driverPayment = (duration / 60) * perHourDriverRate;
 
   if (loading) {
     return (
@@ -112,39 +113,26 @@ const MapDistanceScreen = () => {
           longitudeDelta: 0.1,
         }}
       >
-        <Marker coordinate={source} title="Source Location" pinColor="green" />
+        <Marker coordinate={source} title="Source" pinColor="green" />
         <Marker coordinate={destination} title="Destination" pinColor="red" />
         {routeCoords.length > 0 && (
           <Polyline coordinates={routeCoords} strokeColor="blue" strokeWidth={5} />
         )}
       </MapView>
 
-      {/* Detail Section */}
-      <View style={styles.detailContainer}>
-        <Text style={styles.heading}>Ride Summary</Text>
-
-        <Text style={styles.label}>🚩 Source:</Text>
-        <Text style={styles.value}>
-          Latitude: {source.latitude.toFixed(4)}, Longitude: {source.longitude.toFixed(4)}
-        </Text>
-
-        <Text style={styles.label}>🏁 Destination:</Text>
-        <Text style={styles.value}>
-          Latitude: {destination.latitude.toFixed(4)}, Longitude: {destination.longitude.toFixed(4)}
-        </Text>
-
-        <Text style={styles.label}>📏 Distance:</Text>
-        <Text style={styles.value}>{distance.toFixed(2)} km</Text>
-
-        <Text style={styles.label}>⏱️ Estimated Time:</Text>
-        <Text style={styles.value}>{duration.toFixed(1)} mins</Text>
-
-        <Text style={styles.label}>💰 Estimated Driver Payment:</Text>
-        <Text style={styles.value}>Rs. {driverPayment.toFixed(0)}</Text>
-
-        <View style={{ marginTop: 15 }}>
-          <MyButton title="Done" onPress={() => router.push('/(tabs)/Client/DriverList')} />
-        </View>
+      <View style={styles.summaryBox}>
+        {crossCountry ? (
+          <Text style={styles.errorText}>
+            ❌ Source and Destination must be in the same country.
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.rideInfo}>📏 Distance: {distance.toFixed(2)} km</Text>
+            <Text style={styles.rideInfo}>⏱️ Estimated Time: {duration.toFixed(1)} mins</Text>
+            <Text style={styles.rideInfo}>💰 Driver Payment: Rs. {driverPayment.toFixed(0)}</Text>
+            <MyButton title="Done" onPress={() => router.push('/(tabs)/Client/DriverList')} />
+          </>
+        )}
       </View>
     </View>
   );
@@ -161,31 +149,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: 'purple',
   },
-  detailContainer: {
+  summaryBox: {
     position: 'absolute',
     bottom: 0,
     width: '100%',
-    padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: '#f0f0f0',
+    padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 10,
   },
-  heading: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  label: {
-    color: '#ccc',
-    fontSize: 14,
-    marginTop: 8,
-  },
-  value: {
-    color: 'white',
+  rideInfo: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#333',
+    marginVertical: 5,
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
 

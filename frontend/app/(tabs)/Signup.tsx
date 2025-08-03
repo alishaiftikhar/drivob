@@ -41,9 +41,11 @@ const Signup = () => {
     if (passwordError) return Alert.alert(passwordError);
     if (confirmPasswordError) return Alert.alert(confirmPasswordError);
 
-    // ✅ Simulate success (no backend)
-    Alert.alert('Signup successful!', 'You can now proceed.');
-    router.push('/OTP'); // Navigate to OTP screen or next step
+    // Direct navigation to OTP screen without API
+    router.push({
+      pathname: '/OTP',
+      params: { flowType: 'Signup', email },
+    });
   };
 
   return (

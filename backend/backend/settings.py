@@ -16,7 +16,7 @@ SECRET_KEY = 'django-insecure-&77(*gf$3l90nck&#!1mdp9*b6fa6&m3^24adf3dzp86f^5d96
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']  # Accept all for now (for development only)
+ALLOWED_HOSTS = ['*']  # Accept all hosts (use specific hosts in production)
 
 # Application definition
 INSTALLED_APPS = [
@@ -26,20 +26,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Third-party apps
     'rest_framework',
     'corsheaders',
-
-    # Your app
-    'drivo',
+    'drivo',  # Your custom app
 ]
 
-AUTH_USER_MODEL = 'drivo.User'  # Custom user model
+AUTH_USER_MODEL = 'drivo.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # CORS middleware should be high
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -74,7 +70,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],  # You can add frontend paths here later
+        'DIRS': [],  # Add template paths here later if needed
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -125,8 +121,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-CORS_ALLOWED_ORIGINS = [
-    "http://192.168.43.20:19006",  # for Expo web
-    "http://localhost:19006",      # optional fallback
-]
 
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'alishaiftikhar025@gmail.com'
+EMAIL_HOST_PASSWORD = 'your-app-password'  # ✅ Replace this with the actual App Password from Gmail

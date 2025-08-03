@@ -1,57 +1,86 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
-  Text,
+  TextInput,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
-import MapView, { Marker, MapPressEvent } from 'react-native-maps';
+import MapView, { Marker, MapPressEvent, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useRide } from './RideContext';
+import MyButton from '@/components/MyButton'; // ✅ Your custom button
 
 const DestinationMapScreen = () => {
   const router = useRouter();
   const { setDestination } = useRide();
 
-  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
   const [formattedAddress, setFormattedAddress] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
-
-  // Ask for location permission on mount
-  useEffect(() => {
-    const requestPermission = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to select destination.');
-        return;
-      }
-      setLocationPermissionGranted(true);
-    };
-
-    requestPermission();
-  }, []);
+  const [searchText, setSearchText] = useState<string>('');
+  const [region, setRegion] = useState<Region>({
+    latitude: 31.5204,
+    longitude: 74.3587,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  });
 
   const handleMapPress = async (event: MapPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     setSelectedLocation({ latitude, longitude });
-
     setLoading(true);
+
     try {
-      const addressResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
-      if (addressResponse.length > 0) {
-        const addr = addressResponse[0];
-        const formatted = `${addr.name || ''}, ${addr.city || ''}, ${addr.region || ''}, ${addr.country || ''}`.trim();
-        setFormattedAddress(formatted);
-      } else {
-        setFormattedAddress('Address not found');
-      }
+      const addressResponse = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
+
+      const address = addressResponse[0];
+      const formatted = `${address.name || ''}, ${address.city || ''}, ${address.region || ''}, ${address.country || ''}`;
+      setFormattedAddress(formatted);
     } catch (error) {
       setFormattedAddress('Unknown address');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchText) return;
+    setLoading(true);
+    try {
+      const results = await Location.geocodeAsync(searchText);
+      if (results.length > 0) {
+        const { latitude, longitude } = results[0];
+        const newRegion = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(newRegion);
+        setSelectedLocation({ latitude, longitude });
+
+        const addressResponse = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        const address = addressResponse[0];
+        const formatted = `${address.name || ''}, ${address.city || ''}, ${address.region || ''}, ${address.country || ''}`;
+        setFormattedAddress(formatted);
+      } else {
+        alert('Location not found');
+      }
+    } catch (error) {
+      alert('Error while searching location');
     } finally {
       setLoading(false);
     }
@@ -60,47 +89,59 @@ const DestinationMapScreen = () => {
   const handleConfirm = () => {
     if (selectedLocation && formattedAddress) {
       setDestination({
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
+        ...selectedLocation,
         address: formattedAddress,
       });
+      // ✅ Go back to RideDetails instead of TimePicker
       router.push('/(tabs)/Client/Ride/RideDetails');
-    } else {
-      Alert.alert('Incomplete Selection', 'Please select a destination on the map.');
     }
   };
 
   return (
     <View style={styles.container}>
-      {locationPermissionGranted ? (
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: 31.5204,
-            longitude: 74.3587,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-          onPress={handleMapPress}
-        >
-          {selectedLocation && (
-            <Marker coordinate={selectedLocation} title="Selected Destination" />
-          )}
-        </MapView>
-      ) : (
-        <View style={styles.permissionWarning}>
-          <Text style={styles.warningText}>Waiting for location permission...</Text>
-        </View>
-      )}
+      {/* 🔍 Search Bar */}
+      <View style={styles.searchBar}>
+        <TextInput
+          placeholder="Search for a location..."
+          placeholderTextColor="#999"
+          style={styles.searchInput}
+          value={searchText}
+          onChangeText={setSearchText}
+        />
+        <MyButton
+          title="Search"
+          onPress={handleSearch}
+          style={styles.searchBtnOverride}
+        />
+      </View>
 
+      {/* 🗺️ Map View */}
+      <MapView
+        style={styles.map}
+        region={region}
+        onPress={handleMapPress}
+      >
+        {selectedLocation && (
+          <Marker coordinate={selectedLocation} title="Destination" />
+        )}
+      </MapView>
+
+      {/* ✅ Confirm Button */}
       {selectedLocation && !loading && (
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.buttonText}>{formattedAddress || 'Confirm Destination'}</Text>
-        </TouchableOpacity>
+        <MyButton
+          title={formattedAddress || 'Confirm Destination'}
+          onPress={handleConfirm}
+          style={styles.confirmBtnOverride}
+        />
       )}
 
+      {/* ⏳ Loader */}
       {loading && (
-        <ActivityIndicator style={styles.loader} size="large" color="#FF5722" />
+        <ActivityIndicator
+          style={styles.loader}
+          size="large"
+          color="#2196F3"
+        />
       )}
     </View>
   );
@@ -111,45 +152,46 @@ export default DestinationMapScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#dbd1d1ff',
   },
   map: {
     width: Dimensions.get('window').width,
     height: '100%',
   },
-  confirmButton: {
+  searchBar: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f0f0ff',
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    zIndex: 50,
+    elevation: 10,
+  },
+  searchInput: {
+    flex: 1,
+    color: 'white',
+    paddingLeft: 8,
+  },
+  searchBtnOverride: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  confirmBtnOverride: {
     position: 'absolute',
     bottom: 40,
-    left: 40,
-    right: 40,
-    backgroundColor: '#FF5722',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    left: 30,
+    right: 30,
   },
   loader: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 100,
     alignSelf: 'center',
-  },
-  permissionWarning: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  warningText: {
-    fontSize: 16,
-    color: '#555',
   },
 });
