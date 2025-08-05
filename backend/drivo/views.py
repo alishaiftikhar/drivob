@@ -49,6 +49,7 @@ class SignupView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
         data = request.data
+        print("Received signup data:", data)
         try:
             user = User.objects.create(
                 username=data['username'],
