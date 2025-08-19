@@ -1,0 +1,22 @@
+<<<<<<< HEAD
+=======
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "drivo",
+            "database": "drivodb",
+            "username": "root",
+            "connectionTimeout": 30,
+            "password": "hifzaarif65"
+        }
+    ]
+}
+>>>>>>> 02e825528086f0d4751ea084c1a92e047b61e1fc

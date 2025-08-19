@@ -1,157 +1,186 @@
-// MenuOptions/Profile/ProfileScreen.tsx
 
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
   Alert,
+  StyleSheet,
+  View,
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
+  TouchableOpacity,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import axios from 'axios';
+
+import InputButton from '@/components/Inputbutton';
+import MyButton from '@/components/MyButton';
+import BackgroundOne from '@/components/BackgroundDesign';
 import Colors from '@/constants/Color';
 
-const ProfileScreen = () => {
+
+const API_BASE_URL = 'http://192.168.43.20:8000/api'; // <-- Make sure this is your backend URL
+
+const ClientProfile = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  const [profile, setProfile] = useState({
-    name: typeof params.name === 'string' ? params.name : 'Your Name',
-    phone: typeof params.phone === 'string' ? params.phone : '03XX-XXXXXXX',
-    role: typeof params.role === 'string' ? params.role : 'Client',
-    status: typeof params.status === 'string' ? params.status : 'Active',
-    dp:
-      typeof params.dp === 'string'
-        ? params.dp
-        : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-  });
+  // Get token from params
+  const token = (params.token as string) || '';
 
-  const [showMenu, setShowMenu] = useState(false);
+  // Pre-filled if editing, empty if new user
+  const [name, setName] = useState(params.name as string || '');
+  const [cnic, setCnic] = useState(params.cnic as string || '');
+  const [age, setAge] = useState(params.age as string || '');
+  const [phone, setPhone] = useState(params.phone as string || '');
+  const [address, setAddress] = useState(params.address as string || '');
+  const [profileImage, setProfileImage] = useState<string | null>(
+    params.dp as string || null
+  );
 
-  const handleMenuOption = (action: 'view' | 'edit' | 'logout') => {
-    setShowMenu(false);
+  const handleIconPress = async () => {
+    const mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
 
-    switch (action) {
-      case 'view':
-        router.push({
-          pathname: '/(tabs)/Client/MenuOptions/Profile/ViewClientProfile',
-          params: profile,
-        });
-        break;
-      case 'edit':
-        router.push({
-          pathname: '/(tabs)/Client/MenuOptions/Profile/EditProfile',
-          params: { ...profile, editing: 'true' },
-        });
-        break;
-      case 'logout':
-        Alert.alert('Logout', 'You have been logged out.');
-        break;
+    if (!mediaPermission.granted || !cameraPermission.granted) {
+      Alert.alert('Permission Denied', 'Allow camera and gallery access.');
+      return;
+    }
+
+    Alert.alert('Select Image', 'Choose an option', [
+      {
+        text: 'Camera',
+        onPress: async () => {
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+          });
+          if (!result.canceled) {
+            setProfileImage(result.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: 'Gallery',
+        onPress: async () => {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 1,
+          });
+          if (!result.canceled) {
+            setProfileImage(result.assets[0].uri);
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  // Save profile function
+  const handleSaveProfile = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Token is missing');
+      return;
+    }
+
+    const data = {
+      full_name: name,
+      phone_number: phone,
+      cnic: cnic,
+      age: age,
+      address: address,
+      dp: profileImage,
+    };
+
+    try {
+      const response = await axios.put(`${API_BASE_URL}/user-profile/`, data, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      Alert.alert('Success', 'Profile saved successfully');
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Failed to save profile';
+      Alert.alert('Error', message);
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.heading}>Your Profile</Text>
-        <TouchableOpacity onPress={() => setShowMenu(!showMenu)}>
-          <Ionicons name="ellipsis-vertical" size={26} color={Colors.primary} />
-        </TouchableOpacity>
-      </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        <BackgroundOne
+          imageSource={
+            <TouchableOpacity onPress={handleIconPress}>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profileImage} />
+              ) : (
+                <Ionicons name="person-circle-outline" size={120} color="white" />
+              )}
+            </TouchableOpacity>
+          }
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <InputButton placeholder="Full Name" value={name} onChangeText={setName} />
+            <InputButton
+              placeholder="CNIC"
+              value={cnic}
+              onChangeText={setCnic}
+              keyboardType="numeric"
+            />
+            <InputButton
+              placeholder="Age"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="numeric"
+            />
+            <InputButton
+              placeholder="Phone Number"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+            <InputButton
+              placeholder="Address"
+              value={address}
+              onChangeText={setAddress}
+            />
 
-      {/* Dropdown menu */}
-      {showMenu && (
-        <View style={styles.menu}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption('view')}
-          >
-            <Text style={styles.menuText}>View</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption('edit')}
-          >
-            <Text style={styles.menuText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => handleMenuOption('logout')}
-          >
-            <Text style={styles.menuText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Profile Info */}
-      <Image source={{ uri: profile.dp }} style={styles.profileImage} />
-      <Text style={styles.text}><Text style={styles.label}>Name:</Text> {profile.name}</Text>
-      <Text style={styles.text}><Text style={styles.label}>Phone:</Text> {profile.phone}</Text>
-      <Text style={styles.text}><Text style={styles.label}>Role:</Text> {profile.role}</Text>
-      <Text style={styles.text}><Text style={styles.label}>Status:</Text> {profile.status}</Text>
-    </View>
+            <View style={{ marginTop: 40 }}>
+              <MyButton title="Save Profile" onPress={handleSaveProfile} />
+            </View>
+          </ScrollView>
+        </BackgroundOne>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
-export default ProfileScreen;
+export default ClientProfile;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    paddingTop: 60,
+  scrollContainer: {
     paddingHorizontal: 20,
-  },
-  header: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    marginBottom: 10,
-  },
-  heading: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.primary,
+    alignItems: 'center',
+    paddingTop: 0,
+    paddingBottom: 200,
+    gap: 2,
   },
   profileImage: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  text: {
-    fontSize: 18,
-    marginBottom: 12,
-    color: Colors.text,
-  },
-  label: {
-    fontWeight: 'bold',
-    color: Colors.primary,
-  },
-  menu: {
-    position: 'absolute',
-    top: 65,
-    right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    elevation: 6,
-    zIndex: 99,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  menuText: {
-    fontSize: 16,
-    color: Colors.primary,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
   },
 });
