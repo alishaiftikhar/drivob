@@ -1,27 +1,30 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
-  Alert,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Keyboard,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  TouchableOpacity,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
-
+import axios, { AxiosError } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import BackgroundOne from '../../components/BackgroundDesign';
 import InputButton from '@/components/Inputbutton';
 import MyButton from '@/components/MyButton';
-import { useRouter } from 'expo-router';
 import Colors from '@/constants/Color';
+import { useRouter } from 'expo-router';
 import {
   validateEmail,
   validatePassword,
   validateConfirmPassword,
 } from '@/components/Validation';
+
+const API_BASE_URL = 'http://192.168.43.20:8000/api';
 
 const Signup = () => {
   const router = useRouter();
@@ -32,18 +35,56 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignUp = () => {
-    const emailError = validateEmail(email);
-    const passwordError = validatePassword(password);
-    const confirmPasswordError = validateConfirmPassword(password, confirmPassword);
+  const handleSignUp = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    const trimmedConfirmPassword = confirmPassword.trim();
 
-    if (emailError) return Alert.alert(emailError);
-    if (passwordError) return Alert.alert(passwordError);
-    if (confirmPasswordError) return Alert.alert(confirmPasswordError);
+    const emailError = validateEmail(trimmedEmail);
+    const passwordError = validatePassword(trimmedPassword);
+    const confirmPasswordError = validateConfirmPassword(
+      trimmedPassword,
+      trimmedConfirmPassword
+    );
 
-    // ✅ Simulate success (no backend)
-    Alert.alert('Signup successful!', 'You can now proceed.');
-    router.push('/OTP'); // Navigate to OTP screen or next step
+    if (emailError) return Alert.alert('Validation Error', emailError);
+    if (passwordError) return Alert.alert('Validation Error', passwordError);
+    if (confirmPasswordError)
+      return Alert.alert('Validation Error', confirmPasswordError);
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/signup/`, {
+        email: trimmedEmail,
+        password: trimmedPassword,
+        is_driver: false,
+        is_client: true,
+      });
+
+      if (response.status === 201) {
+        // Save email locally
+        await AsyncStorage.setItem('signup_email', trimmedEmail);
+
+       await axios.post(`${API_BASE_URL}/send-otp/`, { email: trimmedEmail });
+
+      router.push(`/OTP?email=${encodeURIComponent(trimmedEmail)}&from=signup`);
+
+      } else {
+        Alert.alert('Signup Failed', 'Unexpected response from server.');
+      }
+    } catch (error: unknown) {
+      let message = 'Something went wrong.';
+
+      if (axios.isAxiosError(error)) {
+        const axiosErr = error as AxiosError<{ message?: string; error?: string }>;
+        message =
+          axiosErr.response?.data?.message ||
+          axiosErr.response?.data?.error ||
+          axiosErr.message ||
+          'Network error. Please check your connection.';
+      }
+
+      Alert.alert('Error', message);
+    }
   };
 
   return (
@@ -57,13 +98,13 @@ const Signup = () => {
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
           >
             <InputButton
               placeholder="Enter Email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
 
             <InputButton
@@ -72,7 +113,7 @@ const Signup = () => {
               onChangeText={setPassword}
               secure
               showToggle
-              isSecure={showPassword}
+              isSecure={!showPassword}
               onToggle={() => setShowPassword(!showPassword)}
             />
 
@@ -82,7 +123,7 @@ const Signup = () => {
               onChangeText={setConfirmPassword}
               secure
               showToggle
-              isSecure={showConfirmPassword}
+              isSecure={!showConfirmPassword}
               onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
             />
 
@@ -91,7 +132,9 @@ const Signup = () => {
             </View>
 
             <TouchableOpacity onPress={() => router.push('/Login')}>
-              <Text style={styles.signupText}>Already have an account? Login</Text>
+              <Text style={styles.signupText}>
+                Already have an account? Login
+              </Text>
             </TouchableOpacity>
           </ScrollView>
         </BackgroundOne>
@@ -107,12 +150,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 0,
+    paddingTop: 50,
     paddingBottom: 200,
-    gap: 2,
+    gap: 15,
   },
   buttonWrapper: {
     marginTop: 15,
+    width: '100%',
   },
   signupText: {
     marginTop: 25,

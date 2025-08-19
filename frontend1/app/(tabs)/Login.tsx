@@ -1,113 +1,80 @@
+// app/Login.tsx
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-
-import BackgroundOne from '../../components/BackgroundDesign';
-import InputButton from '@/components/Inputbutton';
-import MyButton from '@/components/MyButton';
-import Colors from '@/constants/Color';
+import { View, TextInput, StyleSheet, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { validateEmail, validatePassword } from '@/components/Validation';
+import axios from 'axios';
+import BackgroundOne from '../../components/BackgroundDesign';
+import MyButton from '@/components/MyButton';
+import * as SecureStore from 'expo-secure-store';
 
-const Login = () => {
+const API_BASE_URL = 'http://192.168.100.7:8000/api';
+
+export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
-    const emailError = validateEmail(email);
-    const passwordError = validatePassword(password);
+  const handleLogin = async () => {
+    if (!email || !password) return Alert.alert('Error', 'Email and password are required');
 
-    if (emailError) return alert(emailError);
-    if (passwordError) return alert(passwordError);
+    try {
+      const response = await axios.post(`${API_BASE_URL}/login/`, { email, password });
 
-    router.push('/TypeSelector');
+      if (response.status === 200) {
+        const { access_token, refresh_token } = response.data;
+
+        await SecureStore.setItemAsync('accessToken', access_token);
+        await SecureStore.setItemAsync('refreshToken', refresh_token);
+
+        router.push('/(tabs)/TypeSelector'); // Navigate to TypeSelector directly
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Login failed';
+      Alert.alert('Error', message);
+    }
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-      >
-        <BackgroundOne text="Login">
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <InputButton
-              placeholder="Enter Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-
-            <InputButton
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secure
-              showToggle
-              isSecure={showPassword}
-              onToggle={() => setShowPassword(!showPassword)}
-            />
-
-            {/* Forget Password */}
-            <TouchableOpacity onPress={() => router.push('/EnterEmail')}>
-              <Text style={styles.forgetText}>Forget Password?</Text>
-            </TouchableOpacity>
-
-            {/* Login Button */}
-            <View style={{ marginTop: 40 }}>
-              <MyButton title="Login" onPress={handleLogin} />
-            </View>
-
-            {/* Signup Link */}
-            <TouchableOpacity onPress={() => router.push('/Signup')}>
-              <Text style={styles.signupText}>Create New Account</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </BackgroundOne>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <BackgroundOne text="Login">
+        <View style={styles.container}>
+          <TextInput
+            placeholder="Email"
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            placeholder="Password"
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          <View style={{ marginTop: 20 }}>
+            <MyButton title="Login" onPress={handleLogin} />
+          </View>
+        </View>
+      </BackgroundOne>
+    </KeyboardAvoidingView>
   );
-};
-
-export default Login;
+}
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 200, // for scroll space
-    gap: 2,
-  },
-  forgetText: {
-    alignSelf: 'flex-end',
-    marginTop: 5,
-    marginRight: -140,
-    color: Colors.primary,
-    fontSize: 20,
-    textDecorationLine: 'underline',
-  },
-  signupText: {
-    marginTop: 25,
+  container: { flex: 1, alignItems: 'center', paddingTop: 100 },
+  input: {
+    width: '80%',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderRadius: 10,
+    padding: 12,
     fontSize: 16,
-    color: Colors.primary,
-    fontWeight: '600',
+    marginBottom: 15,
   },
 });
