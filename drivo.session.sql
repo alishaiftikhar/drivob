@@ -4,21 +4,16 @@ USE drivodb;
 CREATE TABLE drivo_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     password VARCHAR(128) NOT NULL,
-    last_login DATETIME(6),
-    is_superuser BOOLEAN NOT NULL,
-    username VARCHAR(150) NOT NULL UNIQUE,
-    first_name VARCHAR(150) NOT NULL,
-    last_name VARCHAR(150) NOT NULL,
-    email VARCHAR(254) NOT NULL,
-    is_staff BOOLEAN NOT NULL,
-    is_active BOOLEAN NOT NULL,
-    date_joined DATETIME(6) NOT NULL,
+    last_login DATETIME NULL,
+    is_superuser BOOLEAN NOT NULL DEFAULT FALSE,
+    username VARCHAR(150) NOT NULL UNIQUE, -- can store email
+    email VARCHAR(254) NOT NULL UNIQUE,     -- login by email
+    is_staff BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    date_joined DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_driver BOOLEAN DEFAULT FALSE,
-    is_client BOOLEAN DEFAULT FALSE,
-    cnic VARCHAR(15) UNIQUE, -- ✅ CNIC stored here
-    license_number VARCHAR(20),
-    license_expiry_date DATE,
-    is_logged_in BOOLEAN DEFAULT FALSE
+    is_client BOOLEAN DEFAULT FALSE,         -- only for drivers
+    
 );
 
 -- ✅ Admin Table
@@ -32,13 +27,18 @@ CREATE TABLE admin (
 -- ✅ Client Table (linked to drivo_user)
 CREATE TABLE client (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT,
-    full_name VARCHAR(100),
-    age INT,
-    phone_number VARCHAR(15),
-    address TEXT,
+    user_id BIGINT NOT NULL,
+    full_name VARCHAR(100) NULL,
+    cnic VARCHAR(15) NULL,
+    age INT NULL,
+    phone_number VARCHAR(15) NULL,
+    address TEXT NULL,
+    latitude DECIMAL(9,6) NULL,
+    longitude DECIMAL(9,6) NULL,
+    dp VARCHAR(255) NULL,
     FOREIGN KEY (user_id) REFERENCES drivo_user(id)
 );
+
 
 -- ✅ Driver Table (linked to drivo_user)
 CREATE TABLE driver (

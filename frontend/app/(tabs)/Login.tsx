@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 
 import BackgroundOne from '../../components/BackgroundDesign';
@@ -17,6 +18,10 @@ import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
 import { useRouter } from 'expo-router';
 import { validateEmail, validatePassword } from '@/components/Validation';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+
+const API_BASE_URL = 'http://192.168.43.20:8000/api';
 
 const Login = () => {
   const router = useRouter();
@@ -24,14 +29,43 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
 
-    if (emailError) return alert(emailError);
-    if (passwordError) return alert(passwordError);
+    if (emailError) return Alert.alert('Error', emailError);
+    if (passwordError) return Alert.alert('Error', passwordError);
 
-    router.push('/TypeSelector');
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/login/`,
+        { username: email, password }, // Use 'username' as key for Django SimpleJWT
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      console.log('Login response:', response.data);
+
+      if (response.status === 200) {
+        Alert.alert('Success', 'Login successful');
+
+        // Save access token securely
+        if (response.data.access) {
+          await SecureStore.setItemAsync('userToken', response.data.access);
+        }
+
+        // Navigate to home or appropriate screen after login
+        router.push('/');
+      } else {
+        Alert.alert('Error', response.data.message || 'Login failed');
+      }
+    } catch (err: any) {
+      console.log('Login error:', err.response?.data || err.message);
+      const message =
+        err.response?.data?.message || 'Something went wrong during login';
+      Alert.alert('Error', message);
+    }
   };
 
   return (
@@ -60,21 +94,18 @@ const Login = () => {
               onChangeText={setPassword}
               secure
               showToggle
-              isSecure={showPassword}
+              isSecure={!showPassword}
               onToggle={() => setShowPassword(!showPassword)}
             />
 
-            {/* Forget Password */}
             <TouchableOpacity onPress={() => router.push('/EnterEmail')}>
               <Text style={styles.forgetText}>Forget Password?</Text>
             </TouchableOpacity>
 
-            {/* Login Button */}
             <View style={{ marginTop: 40 }}>
               <MyButton title="Login" onPress={handleLogin} />
             </View>
 
-            {/* Signup Link */}
             <TouchableOpacity onPress={() => router.push('/Signup')}>
               <Text style={styles.signupText}>Create New Account</Text>
             </TouchableOpacity>
@@ -93,7 +124,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 0,
-    paddingBottom: 200, // for scroll space
+    paddingBottom: 200,
     gap: 2,
   },
   forgetText: {

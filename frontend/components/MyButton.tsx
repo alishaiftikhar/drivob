@@ -5,13 +5,19 @@ import Color from '@/constants/Color';
 interface MyButtonProps {
   title: string;
   onPress: () => void;
-  style?: ViewStyle; // Allow custom style from outside
+  style?: ViewStyle | ViewStyle[]; // Allow single or array of styles from outside
+  disabled?: boolean;              // Optional disabled prop to control button state
 }
 
-const MyButton = ({ title, onPress, style }: MyButtonProps) => {
+const MyButton = ({ title, onPress, style, disabled = false }: MyButtonProps) => {
   return (
-    <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
-      <Text style={styles.buttonText}>{title}</Text>
+    <TouchableOpacity
+      style={[styles.button, style, disabled && styles.disabledButton]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.7}
+      disabled={disabled}
+    >
+      <Text style={[styles.buttonText, disabled && styles.disabledText]}>{title}</Text>
     </TouchableOpacity>
   );
 };
@@ -29,10 +35,16 @@ const styles = StyleSheet.create({
     elevation: 10,
     alignSelf: 'center', // Centered by default
   },
+  disabledButton: {
+    backgroundColor: '#999999',
+  },
   buttonText: {
     color: Color.text,
     fontSize: 22,
     fontWeight: '600',
+  },
+  disabledText: {
+    color: '#dddddd',
   },
 });
 

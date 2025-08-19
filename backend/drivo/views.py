@@ -1,185 +1,347 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
-from django.core.mail import send_mail
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import EmailOTP
-from django.utils import timezone
-from django.http import JsonResponse
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.mail import send_mail
+from django.conf import settings
 from django.contrib.auth.hashers import make_password
-from rest_framework.permissions import AllowAny
-from django.contrib.auth import authenticate
-from .models import User, EmailOTP, DriverProfile, ClientProfile, Ride, Payment, Review
-from drivo.serializers import (UserSerializer, DriverProfileSerializer, ClientProfileSerializer,
+import random
+import requests  # Required for geocode API view
+
+from drivo.models import (
+    User, DriverProfile, ClientProfile, Ride, Payment, Review, EmailOTP
+)
+from drivo.serializers import (
+    UserSerializer, DriverProfileSerializer, ClientProfileSerializer,
     RideSerializer, PaymentSerializer, ReviewSerializer
 )
 
+
+# ------------------- MODEL VIEWSETS -------------------
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
 
 class DriverProfileViewSet(viewsets.ModelViewSet):
     queryset = DriverProfile.objects.all()
     serializer_class = DriverProfileSerializer
 
+
 class ClientProfileViewSet(viewsets.ModelViewSet):
     queryset = ClientProfile.objects.all()
     serializer_class = ClientProfileSerializer
 
+
 class RideViewSet(viewsets.ModelViewSet):
     queryset = Ride.objects.all()
     serializer_class = RideSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        client_profile = self.request.user.client_profile
+        serializer.save(client=client_profile)
+
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
 
+
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
 
+
+# ------------------- SIGNUP -------------------
 class SignupView(APIView):
-    def post(self, request):
-        data = request.data
-        try:
-            user = User.objects.create(
-                username=data['username'],
-                email=data.get('email', ''),
-                password=make_password(data['password']),
-                is_driver=data.get('is_driver', False),
-                is_client=data.get('is_client', False)
-            )
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user_id': user.id,
-                'username': user.username
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"message": "Signup failed", "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-class CheckCNICView(APIView):
     permission_classes = [AllowAny]
-    def post(self, request):
-        cnic = request.data.get("cnic")
-        exists = User.objects.filter(cnic=cnic).exists()
-        return Response({"exists": exists})
 
-class CheckLicenseView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        license_number = request.data.get("license_number")
-        try:
-            user = User.objects.get(license_number=license_number)
-            if user.license_expiry_date and user.license_expiry_date < timezone.now().date():
-                return Response({"expired": True})
-            return Response({"valid": True})
-        except User.DoesNotExist:
-            return Response({"exists": False}, status=404)
-
-class CheckEmailUniqueView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        email = request.data.get("email")
-        exists = User.objects.filter(email=email).exists()
-        return Response({"exists": exists})
-
-class IsLoggedInView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        email = request.data.get("email")
-        try:
-            user = User.objects.get(email=email)
-            return Response({"logged_in": user.is_logged_in})
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
-
-
-class VerifyOTPView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        email = request.data.get('email')
-        otp = request.data.get('otp')
-        try:
-            user = User.objects.get(email=email)
-            otp_obj = EmailOTP.objects.get(user=user)
-            if otp_obj.otp != otp:
-                return Response({"valid": False, "message": "Incorrect OTP"}, status=400)
-            if otp_obj.is_expired():
-                return Response({"valid": False, "message": "OTP expired"}, status=400)
-            return Response({"valid": True})
-        except:
-            return Response({"valid": False, "message": "OTP or User not found"}, status=400)
-
-class LoginView(APIView):
-    permission_classes = [AllowAny]
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
+
+        if not email or not password:
+            return Response({"message": "Email and password are required."}, status=400)
+
+        if User.objects.filter(email=email).exists():
+            return Response({"message": "Email already registered."}, status=400)
+
         try:
+            user = User.objects.create(
+                email=email,
+                password=make_password(password),
+                is_active=False
+            )
+
+            # Generate OTP
+            otp = str(random.randint(100000, 999999))
+            EmailOTP.objects.create(email=email, otp=otp)
+
+            send_mail(
+                subject='Your OTP Code',
+                message=f'Your OTP code is {otp}',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+
+            return Response({"message": "Signup successful. OTP sent to email.", "email": email}, status=201)
+
+        except Exception as e:
+            return Response({"message": "Signup failed", "error": str(e)}, status=400)
+
+
+# ------------------- RESEND OTP -------------------
+class SendOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({'success': False, 'message': 'Email is required'}, status=400)
+
+        if not User.objects.filter(email=email).exists():
+            return Response({'success': False, 'message': 'User not found'}, status=404)
+
+        otp = str(random.randint(100000, 999999))
+        EmailOTP.objects.create(email=email, otp=otp)
+
+        send_mail(
+            subject='Your OTP Code',
+            message=f'Your OTP code is {otp}',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return Response({'success': True, 'message': 'OTP sent to your email'})
+
+
+# ------------------- VERIFY OTP -------------------
+class VerifyOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+
+        if not email or not otp:
+            return Response({'success': False, 'message': 'Email and OTP are required'}, status=400)
+
+        try:
+            otp_obj = EmailOTP.objects.filter(email=email, otp=otp).latest('created_at')
+
+            if otp_obj.is_expired():
+                return Response({'success': False, 'message': 'OTP has expired'}, status=400)
+
             user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=404)
-
-        user = authenticate(request, username=user.username, password=password)
-        if user:
-            refresh = RefreshToken.for_user(user)
-            user.is_logged_in = True
+            user.is_active = True
             user.save()
+
+            otp_obj.delete()
+
+            refresh = RefreshToken.for_user(user)
+
             return Response({
-                'access': str(refresh.access_token),
+                'success': True,
+                'message': 'OTP verified successfully',
                 'refresh': str(refresh),
-                'message': 'Login successful'
+                'access': str(refresh.access_token),
+                'user_id': user.id,
+                'email': user.email
+            }, status=200)
+
+        except EmailOTP.DoesNotExist:
+            return Response({'success': False, 'message': 'Invalid OTP'}, status=400)
+
+
+# ------------------- SET USER TYPE -------------------
+class SetUserTypeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user_type = request.data.get('user_type') or request.data.get('type')
+        user = request.user
+
+        if user_type == 'driver':
+            user.is_driver = True
+            user.is_client = False
+            user.save()
+            DriverProfile.objects.get_or_create(user=user, defaults={
+                'full_name': '',
+                'age': None,
+                'cnic': '',
+                'driving_license': '',
+                'license_expiry': None,
+                'phone_number': '',
+                'city': ''
             })
-        return Response({"error": "Invalid password"}, status=400)
-@api_view(['POST'])
-def send_email_otp(request):
-    email = request.data.get('email')
-    otp = str(random.randint(100000, 999999))
+        elif user_type == 'client':
+            user.is_client = True
+            user.is_driver = False
+            user.save()
+            ClientProfile.objects.get_or_create(user=user, defaults={
+                'full_name': '',
+                'age': None,
+                'cnic': '',
+                'phone_number': '',
+                'address': ''
+            })
+        else:
+            return Response({"error": "Invalid user type"}, status=400)
 
-    obj, created = EmailOTP.objects.update_or_create(
-        email=email,
-        defaults={
-            'otp_code': otp,
-            'created_at': timezone.now(),
-            'is_verified': False
+        return Response({"success": True, "message": "User type updated and profile created"}, status=200)
+
+
+# ------------------- CLIENT PROFILE VIEW -------------------
+class ClientProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  # Enable multipart form parsing
+
+    def get(self, request):
+        profile, _ = ClientProfile.objects.get_or_create(user=request.user, defaults={
+            'full_name': '',
+            'age': None,
+            'cnic': '',
+            'phone_number': '',
+            'address': ''
+        })
+        serializer = ClientProfileSerializer(profile)
+        return Response(serializer.data, status=200)
+
+    def put(self, request):
+        profile, _ = ClientProfile.objects.get_or_create(user=request.user, defaults={
+            'full_name': '',
+            'age': None,
+            'cnic': '',
+            'phone_number': '',
+            'address': ''
+        })
+        serializer = ClientProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        else:
+            print(serializer.errors)  # Log errors to console for debugging
+            return Response(serializer.errors, status=400)
+
+
+# ------------------- DRIVER PROFILE VIEW -------------------
+class DriverProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]  # Enable multipart form parsing
+
+    def get(self, request):
+        profile, _ = DriverProfile.objects.get_or_create(user=request.user, defaults={
+            'full_name': '',
+            'age': None,
+            'cnic': '',
+            'driving_license': '',
+            'license_expiry': None,
+            'phone_number': '',
+            'city': ''
+        })
+        serializer = DriverProfileSerializer(profile)
+        return Response(serializer.data, status=200)
+
+    def put(self, request):
+        profile, _ = DriverProfile.objects.get_or_create(user=request.user, defaults={
+            'full_name': '',
+            'age': None,
+            'cnic': '',
+            'driving_license': '',
+            'license_expiry': None,
+            'phone_number': '',
+            'city': ''
+        })
+        serializer = DriverProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=200)
+        else:
+            print(serializer.errors)
+            return Response(serializer.errors, status=400)
+
+
+# ------------------- SAVE LOCATION VIEW -------------------
+class SaveLocationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        latitude = request.data.get('latitude')
+        longitude = request.data.get('longitude')
+
+        if latitude is None or longitude is None:
+            return Response({"error": "Both latitude and longitude are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save coordinate for ClientProfile or DriverProfile depending on user role
+        if getattr(user, 'is_client', False):
+            profile, _ = ClientProfile.objects.get_or_create(user=user)
+        elif getattr(user, 'is_driver', False):
+            profile, _ = DriverProfile.objects.get_or_create(user=user)
+        else:
+            return Response({"error": "User has no associated profile."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.latitude = latitude
+        profile.longitude = longitude
+        profile.save()
+
+        return Response({"success": "Location saved successfully."}, status=status.HTTP_200_OK)
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from django.core.cache import cache
+import requests
+import re
+
+def sanitize_cache_key(query):
+    # Replace unsafe characters (including spaces) with underscore
+    return re.sub(r'[^A-Za-z0-9_-]', '_', query)
+
+class GeocodeView(APIView):
+    permission_classes = [AllowAny]  # Allow public access
+
+    def get(self, request):
+        query = request.query_params.get('q', '')
+        if not query:
+            return Response(
+                {"error": "Query parameter 'q' is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        cache_key = f'geocode_{sanitize_cache_key(query)}'
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            return Response(cached_response, status=status.HTTP_200_OK)
+
+        url = 'https://nominatim.openstreetmap.org/search'
+        params = {
+            'q': query,
+            'format': 'json',
+            'limit': 1
         }
-    )
+        headers = {
+            'User-Agent': 'Drivo/1.0 (gdooduii@gmail.com)'
+        }
 
-    send_mail(
-        subject='Your Email Verification OTP',
-        message=f'Your OTP is {otp}',
-        from_email='your-email@example.com',
-        recipient_list=[email],
-        fail_silently=False,
-    )
-
-    return Response({'message': 'OTP sent to email'})
-
-@api_view(['POST'])
-def verify_email_otp(request):
-    email = request.data.get('email')
-    otp = request.data.get('otp')
-
-    try:
-        obj = EmailOTP.objects.get(email=email, otp_code=otp)
-        if (timezone.now() - obj.created_at).seconds > 300:
-            return Response({'message': 'OTP expired', 'status': False})
-
-        obj.is_verified = True
-        obj.save()
-        return Response({'message': 'Email verified successfully', 'status': True})
-    except EmailOTP.DoesNotExist:
-        return Response({'message': 'Invalid OTP', 'status': False})
-@api_view(['GET'])
-def test_email_view(request):
-    send_mail(
-        subject='OTP Test Email',
-        message='This is a test email to verify Django email settings.',
-        from_email=None,  # Uses EMAIL_HOST_USER from settings
-        recipient_list=['alishaiftikhar025@gmail.com'],  # ✅ Replace with your test email
-        fail_silently=False,
-    )
-    return JsonResponse({'message': 'Test email sent successfully.'})
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            if data:
+                cache.set(cache_key, data[0], timeout=3600)  # Cache for 1 hour
+                return Response(data, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "Location not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        except requests.RequestException as e:
+            return Response(
+                {"error": "External API request failed", "details": str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )

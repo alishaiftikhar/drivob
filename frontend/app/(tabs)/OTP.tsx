@@ -1,89 +1,126 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
+  Alert,
   View,
   Text,
-  TextInput,
   StyleSheet,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Alert,
-  ScrollView,
+  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  TextInput,
 } from 'react-native';
+import api from '@/constants/apiConfig';  // use axios instance here
 import BackgroundOne from '../../components/BackgroundDesign';
-import Colors from '@/constants/Color';
 import MyButton from '@/components/MyButton';
+import Colors from '@/constants/Color';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-const OTP = () => {
+const OTP: React.FC = () => {
   const router = useRouter();
-  const { next } = useLocalSearchParams();
-  const [otp, setOtp] = useState(Array(6).fill(''));
-  const inputs = useRef<TextInput[]>([]);
+  const params = useLocalSearchParams();
+  const email = (params.email as string) || '';
+  const from = (params.from as string) || 'signup';
+
+  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
+  const inputs = useRef<(TextInput | null)[]>([]);
 
   const handleChange = (text: string, index: number) => {
-    if (text.length > 1) return;
-
+    if (text && !/^\d$/.test(text)) return; // only digits allowed
     const newOtp = [...otp];
     newOtp[index] = text;
     setOtp(newOtp);
-
     if (text && index < 5) {
       inputs.current[index + 1]?.focus();
-    }
-    if (!text && index > 0) {
+    } else if (!text && index > 0) {
       inputs.current[index - 1]?.focus();
     }
   };
 
-  const handleVerify = () => {
-    const enteredOTP = otp.join('');
-    if (enteredOTP.length !== 6) {
-      Alert.alert('Please enter the complete 6-digit OTP');
+  const handleVerifyOtp = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) {
+      Alert.alert('Validation Error', 'OTP must be 6 digits.');
       return;
     }
+    try {
+      const response = await api.post('/verify-otp/', { email, otp: otpCode });
+      if (response.data.success) {
+        Alert.alert('Success', 'OTP verified successfully!');
+        const token: string = response.data.access;
+        if (from === 'signup')
+          router.push({ pathname: '/TypeSelector', params: { token } });
+        else router.push('/NewPassword');
+      } else {
+        Alert.alert('Error', response.data.message || 'Invalid OTP.');
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'OTP verification failed.';
+      Alert.alert('Error', message);
+    }
+  };
 
-    const redirectTo = typeof next === 'string' ? next : 'TypeSelector';
-    router.push('/NewPassword');
+  const handleResendOtp = async () => {
+    try {
+      const response = await api.post('/send-otp/', { email });
+      if (response.data.success) {
+        Alert.alert('Success', 'OTP resent successfully!');
+        setOtp(['', '', '', '', '', '']);
+        inputs.current[0]?.focus();
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to resend OTP.');
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Failed to resend OTP.';
+      Alert.alert('Error', message);
+    }
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-      >
-        <BackgroundOne text="OTP">
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.title}>Enter 6-digit OTP</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+    >
+      <BackgroundOne text="Verify OTP">
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.infoText}>
+            Enter the 6-digit OTP sent to your email: {email}
+          </Text>
 
-            <View style={styles.otpContainer}>
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => (inputs.current[index] = ref!)}
-                  style={styles.otpInput}
-                  keyboardType="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChangeText={(text) => handleChange(text, index)}
-                />
-              ))}
-            </View>
+          <View style={styles.otpContainer}>
+            {otp.map((value, index) => (
+              <TextInput
+                key={index}
+                style={styles.otpInput}
+                keyboardType="number-pad"
+                maxLength={1}
+                value={value}
+                onChangeText={(text) => handleChange(text, index)}
+                ref={(ref) => (inputs.current[index] = ref)}
+                textAlign="center"
+                importantForAutofill="no"
+                autoComplete="off"
+                autoCorrect={false}
+                returnKeyType="done"
+              />
+            ))}
+          </View>
 
-            <View style={{ marginTop: 60 }}>
-              <MyButton title="Verify OTP" onPress={handleVerify} />
-            </View>
-          </ScrollView>
-        </BackgroundOne>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+          <View style={styles.buttonWrapper}>
+            <MyButton title="Verify OTP" onPress={handleVerifyOtp} />
+          </View>
+
+          <TouchableOpacity onPress={handleResendOtp}>
+            <Text style={styles.resendText}>Resend OTP</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </BackgroundOne>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -94,29 +131,39 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 100,
+    paddingTop: 50,
     paddingBottom: 200,
-    gap: 20,
+    gap: 15,
   },
-  title: {
-    fontSize: 20,
+  infoText: {
+    fontSize: 16,
     color: Colors.primary,
-    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
+    width: '80%',
   },
   otpInput: {
-    width: 45,
-    height: 55,
-    borderRadius: 10,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.primary,
-    backgroundColor: Colors.background,
-    color: 'black',
-    fontSize: 22,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 20,
+    width: '13%',
+    color: Colors.primary,
+  },
+  buttonWrapper: {
+    marginTop: 25,
+    width: '100%',
+  },
+  resendText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: Colors.primary,
+    fontWeight: '600',
     textAlign: 'center',
   },
 });

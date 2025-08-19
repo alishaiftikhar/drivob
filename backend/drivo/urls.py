@@ -1,11 +1,26 @@
-
 from django.urls import path, include
-from .views import send_email_otp, verify_email_otp
-from drivo.views import test_email_view
 from rest_framework.routers import DefaultRouter
-from .views import (UserViewSet, DriverProfileViewSet, ClientProfileViewSet, SignupView, RideViewSet, PaymentViewSet, ReviewViewSet,
-CheckCNICView, CheckLicenseView, CheckEmailUniqueView,IsLoggedInView, VerifyOTPView, LoginView
+from drivo.views import (
+    UserViewSet,
+    DriverProfileViewSet,
+    ClientProfileViewSet,
+    SignupView,
+    RideViewSet,
+    PaymentViewSet,
+    ReviewViewSet,
+    SendOTPView,
+    VerifyOTPView,
+    SetUserTypeView,
+    ClientProfileView,
+    DriverProfileView,
+    SaveLocationView,
+    GeocodeView,  # Make sure this view has permission_classes = [AllowAny]
 )
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'drivers', DriverProfileViewSet)
@@ -17,13 +32,15 @@ router.register(r'reviews', ReviewViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('signup/', SignupView.as_view(), name='signup'),
-    path('check-cnic/', CheckCNICView.as_view()),
-    path('check-license/', CheckLicenseView.as_view()),
-    path('check-email/', CheckEmailUniqueView.as_view()),
-    path('is-logged-in/', IsLoggedInView.as_view()),
-    path('verify-otp/', VerifyOTPView.as_view()),
-    path('login/', LoginView.as_view()),
-    path('send-email-otp/', send_email_otp, name='send_email_otp'),
-    path('verify-email-otp/', verify_email_otp, name='verify_email_otp'),
-    path('test-email/', test_email_view, name='test-email'),
+    path('send-otp/', SendOTPView.as_view(), name='send-otp'),
+    path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('set-user-type/', SetUserTypeView.as_view(), name='set-user-type'),
+    path('user-profile/', ClientProfileView.as_view(), name='client-profile'),
+    path('driver-profile/', DriverProfileView.as_view(), name='driver-profile'),
+    path('save-location/', SaveLocationView.as_view(), name='save-location'),
+    path('geocode/', GeocodeView.as_view(), name='geocode'),
+
+    # JWT Auth with trailing slashes
+    path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
