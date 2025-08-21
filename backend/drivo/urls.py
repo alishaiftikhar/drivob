@@ -14,7 +14,9 @@ from drivo.views import (
     ClientProfileView,
     DriverProfileView,
     SaveLocationView,
-    GeocodeView,  # Make sure this view has permission_classes = [AllowAny]
+    GeocodeView,
+    UserTypeView,
+    RequestDebugView,
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -35,12 +37,12 @@ urlpatterns = [
     path('send-otp/', SendOTPView.as_view(), name='send-otp'),
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     path('set-user-type/', SetUserTypeView.as_view(), name='set-user-type'),
+    path('user-type/', UserTypeView.as_view(), name='user-type'),
     path('user-profile/', ClientProfileView.as_view(), name='client-profile'),
     path('driver-profile/', DriverProfileView.as_view(), name='driver-profile'),
     path('save-location/', SaveLocationView.as_view(), name='save-location'),
     path('geocode/', GeocodeView.as_view(), name='geocode'),
-
-    # JWT Auth with trailing slashes
+    path('request-debug/', RequestDebugView.as_view(), name='request-debug'),
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

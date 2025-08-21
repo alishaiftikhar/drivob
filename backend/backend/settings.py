@@ -4,15 +4,10 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-&77(*gf$3l90nck&#!1mdp9*b6fa6&m3^24adf3dzp86f^5d96')
-
+SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'True').lower() in ['true', '1', 't']
-
-ALLOWED_HOSTS = ['192.168.43.20', 'localhost', '127.0.0.1']
-
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -20,6 +15,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'drf_yasg',    
+    'django_filters',
     'rest_framework',
     'corsheaders',
     'drivo',
@@ -41,11 +38,16 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+         'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
+
+
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
@@ -54,10 +56,11 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",
     "http://192.168.100.7:8081",
-    "http://192.168.43.20:8000",
+    "http://192.168.100.7:8000",
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -106,7 +109,7 @@ TIME_ZONE = os.getenv('TIME_ZONE', 'UTC')
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

@@ -12,7 +12,7 @@ CREATE TABLE drivo_user (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     date_joined DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_driver BOOLEAN DEFAULT FALSE,
-    is_client BOOLEAN DEFAULT FALSE,         -- only for drivers
+    is_client BOOLEAN DEFAULT FALSE       -- only for drivers
     
 );
 
@@ -47,8 +47,8 @@ CREATE TABLE driver (
     full_name VARCHAR(100),
     age INT,
     phone_number VARCHAR(15),
-    city VARCHAR(100),
-    license_number VARCHAR(50),
+    city VARCHAR(100), NULL
+    license_number VARCHAR(50),NULL
     license_expiry DATE,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     FOREIGN KEY (user_id) REFERENCES drivo_user(id)

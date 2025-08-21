@@ -8,7 +8,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 import random
-import requests  # Required for geocode API view
+import requests
+from django.core.cache import cache
+import re
 
 from drivo.models import (
     User, DriverProfile, ClientProfile, Ride, Payment, Review, EmailOTP
@@ -18,83 +20,185 @@ from drivo.serializers import (
     RideSerializer, PaymentSerializer, ReviewSerializer
 )
 
+# ------------------- USER TYPE VIEW -------------------
+class UserTypeView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        return Response({
+            'is_client': request.user.is_client,
+            'is_driver': request.user.is_driver,
+            'email': request.user.email,
+            'user_id': request.user.id
+        }, status=200)
+
+# ------------------- REQUEST DEBUG VIEW -------------------
+class RequestDebugView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        print("=== FULL REQUEST DEBUG ===")
+        print("Headers:", dict(request.headers))
+        print("Auth header:", request.headers.get('Authorization'))
+        print("User:", request.user)
+        print("Authenticated:", request.user.is_authenticated)
+        print("Is client:", request.user.is_client)
+        print("Is driver:", request.user.is_driver)
+        
+        return Response({
+            'headers': dict(request.headers),
+            'auth_header': request.headers.get('Authorization'),
+            'user': {
+                'username': str(request.user),
+                'authenticated': request.user.is_authenticated,
+                'is_client': request.user.is_client,
+                'is_driver': request.user.is_driver,
+            }
+        }, status=200)
 
 # ------------------- MODEL VIEWSETS -------------------
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-
 class DriverProfileViewSet(viewsets.ModelViewSet):
     queryset = DriverProfile.objects.all()
     serializer_class = DriverProfileSerializer
 
-
 class ClientProfileViewSet(viewsets.ModelViewSet):
     queryset = ClientProfile.objects.all()
     serializer_class = ClientProfileSerializer
-
 
 class RideViewSet(viewsets.ModelViewSet):
     queryset = Ride.objects.all()
     serializer_class = RideSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def perform_create(self, serializer):
-        client_profile = self.request.user.client_profile
-        serializer.save(client=client_profile)
-
+    def create(self, request, *args, **kwargs):
+        print("=" * 60)
+        print("=== RIDE CREATE DEBUG ===")
+        print("=" * 60)
+        print("User:", request.user.email)
+        print("Authenticated:", request.user.is_authenticated)
+        print("Is client:", request.user.is_client)
+        print("Raw request data:", request.data)
+        
+        # Check if user is a client
+        if not request.user.is_client:
+            return Response(
+                {"error": "Only clients can create rides. Please switch to client mode."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get or create client profile
+        client_profile, created = ClientProfile.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'full_name': request.user.email.split('@')[0],
+                'age': None,
+                'cnic': '',
+                'phone_number': '',
+                'address': ''
+            }
+        )
+        
+        # Add client profile to request data
+        data = request.data.copy()
+        data['client'] = client_profile.id
+        
+        print("Final data with client:", data)
+        
+        serializer = self.get_serializer(data=data)
+        
+        # Check validation errors in detail
+        if not serializer.is_valid():
+            print("❌ SERIALIZER VALIDATION ERRORS:")
+            print("-" * 40)
+            for field, errors in serializer.errors.items():
+                print(f"Field: {field}")
+                for error in errors:
+                    print(f"  Error: {error}")
+                print("-" * 20)
+            
+            # Return detailed error response
+            error_messages = []
+            for field, errors in serializer.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field}: {error}")
+            
+            return Response(
+                {
+                    "error": "Validation failed", 
+                    "details": serializer.errors,
+                    "messages": error_messages
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Save the ride
+            serializer.save()
+            print("✅ Ride created successfully!")
+            print("Saved data:", serializer.data)
+            
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            
+        except Exception as e:
+            print("❌ Error during ride creation:", str(e))
+            import traceback
+            traceback.print_exc()
+            
+            return Response(
+                {"error": "Failed to create ride", "details": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
 
-
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-
 
 # ------------------- SIGNUP -------------------
 class SignupView(APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def post(self, request):
-        email = request.data.get('email')
-        password = request.data.get('password')
+        data = request.data
+        email = data.get('email')
+        password = data.get('password')
 
         if not email or not password:
-            return Response({"message": "Email and password are required."}, status=400)
-
-        if User.objects.filter(email=email).exists():
-            return Response({"message": "Email already registered."}, status=400)
+            return Response(
+                {"message": "Email and password are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             user = User.objects.create(
                 email=email,
                 password=make_password(password),
-                is_active=False
+                is_driver=data.get('is_driver', False),
+                is_client=data.get('is_client', False)
             )
-
-            # Generate OTP
-            otp = str(random.randint(100000, 999999))
-            EmailOTP.objects.create(email=email, otp=otp)
-
-            send_mail(
-                subject='Your OTP Code',
-                message=f'Your OTP code is {otp}',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-
-            return Response({"message": "Signup successful. OTP sent to email.", "email": email}, status=201)
-
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user_id': user.id,
+            }, status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response({"message": "Signup failed", "error": str(e)}, status=400)
+            return Response({"message": "Signup failed", "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
-# ------------------- RESEND OTP -------------------
+# ------------------- OTP -------------------
 class SendOTPView(APIView):
     permission_classes = [AllowAny]
 
@@ -102,13 +206,8 @@ class SendOTPView(APIView):
         email = request.data.get('email')
         if not email:
             return Response({'success': False, 'message': 'Email is required'}, status=400)
-
-        if not User.objects.filter(email=email).exists():
-            return Response({'success': False, 'message': 'User not found'}, status=404)
-
         otp = str(random.randint(100000, 999999))
         EmailOTP.objects.create(email=email, otp=otp)
-
         send_mail(
             subject='Your OTP Code',
             message=f'Your OTP code is {otp}',
@@ -116,10 +215,8 @@ class SendOTPView(APIView):
             recipient_list=[email],
             fail_silently=False,
         )
-        return Response({'success': True, 'message': 'OTP sent to your email'})
+        return Response({'success': True, 'message': 'OTP sent successfully'})
 
-
-# ------------------- VERIFY OTP -------------------
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
 
@@ -133,17 +230,15 @@ class VerifyOTPView(APIView):
         try:
             otp_obj = EmailOTP.objects.filter(email=email, otp=otp).latest('created_at')
 
-            if otp_obj.is_expired():
+            if hasattr(otp_obj, 'is_expired') and otp_obj.is_expired():
                 return Response({'success': False, 'message': 'OTP has expired'}, status=400)
 
             user = User.objects.get(email=email)
             user.is_active = True
             user.save()
-
             otp_obj.delete()
 
             refresh = RefreshToken.for_user(user)
-
             return Response({
                 'success': True,
                 'message': 'OTP verified successfully',
@@ -152,10 +247,8 @@ class VerifyOTPView(APIView):
                 'user_id': user.id,
                 'email': user.email
             }, status=200)
-
         except EmailOTP.DoesNotExist:
             return Response({'success': False, 'message': 'Invalid OTP'}, status=400)
-
 
 # ------------------- SET USER TYPE -------------------
 class SetUserTypeView(APIView):
@@ -178,6 +271,13 @@ class SetUserTypeView(APIView):
                 'phone_number': '',
                 'city': ''
             })
+            return Response({
+                "success": True, 
+                "message": "Switched to driver mode",
+                "is_driver": True,
+                "is_client": False
+            }, status=200)
+            
         elif user_type == 'client':
             user.is_client = True
             user.is_driver = False
@@ -189,16 +289,19 @@ class SetUserTypeView(APIView):
                 'phone_number': '',
                 'address': ''
             })
+            return Response({
+                "success": True, 
+                "message": "Switched to client mode",
+                "is_client": True,
+                "is_driver": False
+            }, status=200)
         else:
             return Response({"error": "Invalid user type"}, status=400)
-
-        return Response({"success": True, "message": "User type updated and profile created"}, status=200)
-
 
 # ------------------- CLIENT PROFILE VIEW -------------------
 class ClientProfileView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # Enable multipart form parsing
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
         profile, _ = ClientProfile.objects.get_or_create(user=request.user, defaults={
@@ -224,14 +327,13 @@ class ClientProfileView(APIView):
             serializer.save()
             return Response(serializer.data, status=200)
         else:
-            print(serializer.errors)  # Log errors to console for debugging
+            print(serializer.errors)
             return Response(serializer.errors, status=400)
-
 
 # ------------------- DRIVER PROFILE VIEW -------------------
 class DriverProfileView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # Enable multipart form parsing
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request):
         profile, _ = DriverProfile.objects.get_or_create(user=request.user, defaults={
@@ -264,7 +366,6 @@ class DriverProfileView(APIView):
             print(serializer.errors)
             return Response(serializer.errors, status=400)
 
-
 # ------------------- SAVE LOCATION VIEW -------------------
 class SaveLocationView(APIView):
     permission_classes = [IsAuthenticated]
@@ -277,7 +378,6 @@ class SaveLocationView(APIView):
         if latitude is None or longitude is None:
             return Response({"error": "Both latitude and longitude are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save coordinate for ClientProfile or DriverProfile depending on user role
         if getattr(user, 'is_client', False):
             profile, _ = ClientProfile.objects.get_or_create(user=user)
         elif getattr(user, 'is_driver', False):
@@ -290,20 +390,13 @@ class SaveLocationView(APIView):
         profile.save()
 
         return Response({"success": "Location saved successfully."}, status=status.HTTP_200_OK)
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
-from django.core.cache import cache
-import requests
-import re
 
+# ------------------- GEOCODE VIEW -------------------
 def sanitize_cache_key(query):
-    # Replace unsafe characters (including spaces) with underscore
     return re.sub(r'[^A-Za-z0-9_-]', '_', query)
 
 class GeocodeView(APIView):
-    permission_classes = [AllowAny]  # Allow public access
+    permission_classes = [AllowAny]
 
     def get(self, request):
         query = request.query_params.get('q', '')
@@ -333,7 +426,7 @@ class GeocodeView(APIView):
             response.raise_for_status()
             data = response.json()
             if data:
-                cache.set(cache_key, data[0], timeout=3600)  # Cache for 1 hour
+                cache.set(cache_key, data[0], timeout=3600)
                 return Response(data, status=status.HTTP_200_OK)
             else:
                 return Response(
