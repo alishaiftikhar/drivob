@@ -7,15 +7,14 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import Colors from '@/constants/Color';
 import MyButton from '@/components/MyButton';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import api from '@/constants/apiConfig'; // axios instance
+import api from '@/constants/apiConfig';
 import { Ionicons } from '@expo/vector-icons';
 import BottomTabs from '../Icons/BottomIcons';
 import MenuNavigation from '../MenuOptions/Manunavigation';
@@ -35,7 +34,6 @@ const shortenAddress = (fullAddress: string) => {
 const RideDetails = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
   const [date, setDate] = useState('');
@@ -48,6 +46,7 @@ const RideDetails = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,18 +111,64 @@ const RideDetails = () => {
   };
 
   const getCoordinates = async (place: string) => {
-    try {
-      const res = await api.get('/geocode/', {
-        params: { q: place, format: 'json', limit: 1 },
-      });
-      if (!res.data || res.data.length === 0) return null;
-      const loc = res.data[0];
-      return { latitude: parseFloat(loc.lat), longitude: parseFloat(loc.lon) };
-    } catch (err) {
-      console.error('Geocode error:', err);
+  try {
+    console.log(`Fetching coordinates for: ${place}`);
+    const res = await api.get('/geocode/', {
+      params: { q: place, format: 'json', limit: 1 },
+    });
+    
+    console.log('Geocode response status:', res.status);
+    
+    if (!res.data || res.data.length === 0) {
+      console.log(`No coordinates found for: ${place}`);
       return null;
     }
-  };
+    
+    const loc = res.data[0];
+    console.log(`Found coordinates for ${place}:`, { lat: loc.lat, lon: loc.lon });
+    
+    // Ensure coordinates are properly formatted as numbers
+    const latitude = parseFloat(loc.lat);
+    const longitude = parseFloat(loc.lon);
+    
+    // Validate the coordinates
+    if (isNaN(latitude) || isNaN(longitude)) {
+      console.error(`Invalid coordinates for ${place}:`, { lat: loc.lat, lon: loc.lon });
+      return null;
+    }
+    
+    return { latitude, longitude };
+  } catch (err: any) {
+    console.error(`Geocode error for "${place}":`, err);
+    
+    // Check if it's a 503 error (service unavailable)
+    if (err.response && err.response.status === 503) {
+      console.log('Geocoding service unavailable, using cached or default coordinates');
+      
+      // Return default coordinates for major cities as fallback
+      const defaultCoords: Record<string, { latitude: number; longitude: number }> = {
+        'lahore': { latitude: 31.5204, longitude: 74.3587 },
+        'karachi': { latitude: 24.8607, longitude: 67.0011 },
+        'islamabad': { latitude: 33.6844, longitude: 73.0479 },
+        'rawalpindi': { latitude: 33.6007, longitude: 73.0679 },
+        'peshawar': { latitude: 34.0151, longitude: 71.5249 },
+        'quetta': { latitude: 30.1798, longitude: 66.9750 },
+        'multan': { latitude: 30.1575, longitude: 71.5249 },
+        'faisalabad': { latitude: 31.4187, longitude: 73.0791 },
+      };
+      
+      const placeLower = place.toLowerCase();
+      for (const city in defaultCoords) {
+        if (placeLower.includes(city)) {
+          console.log(`Using default coordinates for ${city}`);
+          return defaultCoords[city];
+        }
+      }
+    }
+    
+    return null;
+  }
+};
 
   const handleSave = async () => {
     if (!source || !destination) {
@@ -148,29 +193,50 @@ const RideDetails = () => {
       return Alert.alert('Missing Info', 'Please fill all fields.');
     }
 
+    setIsLoading(true);
+    
     try {
       const [sourceCoords, destCoords] = await Promise.all([
         getCoordinates(source),
         getCoordinates(destination),
       ]);
-      if (!sourceCoords || !destCoords) throw new Error('Could not fetch coordinates.');
-
+      
+      if (!sourceCoords || !destCoords) {
+        let errorMessage = 'Could not fetch coordinates. ';
+        
+        if (!sourceCoords && !destCoords) {
+          errorMessage += 'Both source and destination locations could not be found.';
+        } else if (!sourceCoords) {
+          errorMessage += `Source location "${source}" could not be found.`;
+        } else {
+          errorMessage += `Destination location "${destination}" could not be found.`;
+        }
+        
+        errorMessage += '\n\nPlease try more specific location names or include city names.';
+        
+        Alert.alert('Location Error', errorMessage);
+        return;
+      }
+      
+      // Format data with proper field names expected by the backend
       const rideData = {
-        source,
-        destination,
-        sourceLat: sourceCoords.latitude,
-        sourceLng: sourceCoords.longitude,
-        destLat: destCoords.latitude,
-        destLng: destCoords.longitude,
+        pickup_location: source,
+        dropoff_location: destination,
+        pickup_latitude: sourceCoords.latitude,
+        pickup_longitude: sourceCoords.longitude,
+        dropoff_latitude: destCoords.latitude,
+        dropoff_longitude: destCoords.longitude,
         date,
         time,
-        vehicleType,
-        fuelType,
-        rideType,
+        vehicle_type: vehicleType,
+        fuel_type: fuelType,
+        trip_type: rideType,
       };
-
+      
+      console.log('Sending ride data:', rideData);
+      
       const response = await api.post('/rides/', rideData);
-
+      
       if (response.status === 200 || response.status === 201) {
         Alert.alert('Success', 'Ride details saved successfully!');
         router.push({
@@ -191,7 +257,33 @@ const RideDetails = () => {
         Alert.alert('Error', 'Failed to save ride details.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'An error occurred during saving.');
+      console.error('Save ride error:', err);
+      
+      let errorMessage = 'An error occurred during saving.';
+      
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Error response data:', err.response.data);
+        console.error('Error response status:', err.response.status);
+        
+        if (err.response.status === 400) {
+          errorMessage = 'Invalid data. Please check all fields.';
+        } else if (err.response.status === 401) {
+          errorMessage = 'Authentication error. Please login again.';
+        } else if (err.response.status === 403) {
+          errorMessage = 'You are not authorized to perform this action.';
+        } else if (err.response.status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+      } else if (err.request) {
+        // The request was made but no response was received
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -212,7 +304,7 @@ const RideDetails = () => {
             <Ionicons name="menu" size={30} color={Colors.primary} />
           </TouchableOpacity>
         </View>
-
+        
         {/* Form */}
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <TouchableOpacity onPress={() => onSelectLocation('source')} style={styles.roundInput}>
@@ -220,25 +312,25 @@ const RideDetails = () => {
               {source || 'Select Source'}
             </Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity onPress={() => onSelectLocation('destination')} style={styles.roundInput}>
             <Text style={destination ? styles.dropdownText : styles.dropdownPlaceholder}>
               {destination || 'Select Destination'}
             </Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.roundInput}>
             <Text style={date ? styles.dropdownText : styles.dropdownPlaceholder}>
               {date || 'Select Date (DD-MM-YYYY)'}
             </Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity onPress={() => setShowTimePicker(true)} style={styles.roundInput}>
             <Text style={time ? styles.dropdownText : styles.dropdownPlaceholder}>
               {time || 'Select Time (e.g. 02:30 PM)'}
             </Text>
           </TouchableOpacity>
-
+          
           <TextInput
             placeholder="Vehicle Type"
             value={vehicleType}
@@ -248,7 +340,7 @@ const RideDetails = () => {
             autoCapitalize="words"
             autoCorrect={false}
           />
-
+          
           {/* Fuel Dropdown */}
           <TouchableOpacity onPress={() => setFuelOptionsVisible(!fuelOptionsVisible)} style={styles.roundInput}>
             <Text style={fuelType ? styles.dropdownText : styles.dropdownPlaceholder}>
@@ -267,7 +359,7 @@ const RideDetails = () => {
                 <Text style={styles.option}>{opt}</Text>
               </TouchableOpacity>
             ))}
-
+          
           {/* Ride Dropdown */}
           <TouchableOpacity onPress={() => setRideOptionsVisible(!rideOptionsVisible)} style={styles.roundInput}>
             <Text style={rideType ? styles.dropdownText : styles.dropdownPlaceholder}>
@@ -286,13 +378,17 @@ const RideDetails = () => {
                 <Text style={styles.option}>{opt}</Text>
               </TouchableOpacity>
             ))}
-
+          
           {/* Save Button */}
           <View style={styles.buttonWrapper}>
-            <MyButton title="Save Ride Details" onPress={handleSave} />
+            {isLoading ? (
+              <ActivityIndicator size="large" color={Colors.primary} />
+            ) : (
+              <MyButton title="Save Ride Details" onPress={handleSave} />
+            )}
           </View>
         </ScrollView>
-
+        
         {/* Date & Time Pickers */}
         {showDatePicker && (
           <DateTimePicker value={new Date()} mode="date" display="default" onChange={onDateChange} />
@@ -300,7 +396,7 @@ const RideDetails = () => {
         {showTimePicker && (
           <DateTimePicker value={new Date()} mode="time" display="default" onChange={onTimeChange} />
         )}
-
+        
         {/* Sidebar + Tabs */}
         <MenuNavigation visible={menuOpen} toggleSidebar={() => setMenuOpen(false)} />
         <BottomTabs />

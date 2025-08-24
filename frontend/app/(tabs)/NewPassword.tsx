@@ -19,6 +19,7 @@ import {
   validatePassword,
   validateConfirmPassword,
 } from '@/components/Validation';
+import api from '@/constants/apiConfig';
 
 const NewPassword = () => {
   const router = useRouter();
@@ -26,15 +27,37 @@ const NewPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const passwordError = validatePassword(newPassword);
     const confirmPasswordError = validateConfirmPassword(newPassword, confirmPassword);
-
-    if (passwordError) return Alert.alert(passwordError);
-    if (confirmPasswordError) return Alert.alert(confirmPasswordError);
-
-    router.push('/TypeSelector');
+    
+    if (passwordError) return Alert.alert('Error', passwordError);
+    if (confirmPasswordError) return Alert.alert('Error', confirmPasswordError);
+    
+    setLoading(true);
+    
+    try {
+      // Send new password to backend
+      const response = await api.post('/reset-password/', {
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      });
+      
+      if (response.data.success) {
+        Alert.alert('Success', 'Password updated successfully!');
+        router.push('/(tabs)/GrantLocation');
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to update password');
+      }
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      const message = err.response?.data?.message || err.response?.data?.detail || 'Failed to reset password';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,7 +82,6 @@ const NewPassword = () => {
               isSecure={showPassword}
               onToggle={() => setShowPassword(!showPassword)}
             />
-
             <InputButton
               placeholder="Confirm Password"
               value={confirmPassword}
@@ -69,9 +91,12 @@ const NewPassword = () => {
               isSecure={showConfirmPassword}
               onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
             />
-
             <View style={styles.buttonArea}>
-              <MyButton title="Submit" onPress={handleSubmit} />
+              <MyButton 
+                title={loading ? "Updating..." : "Submit"} 
+                onPress={handleSubmit} 
+                disabled={loading}
+              />
             </View>
           </ScrollView>
         </BackgroundOne>

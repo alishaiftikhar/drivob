@@ -79,7 +79,7 @@ const ClientProfile: React.FC = () => {
       digits = digits.slice(1);
     }
     if (!digits.startsWith('92')) {
-      digits = '92' + digits;
+      digits = '92 ' + digits;
     }
     return '+' + digits;
   };

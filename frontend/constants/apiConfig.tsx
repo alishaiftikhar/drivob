@@ -1,18 +1,16 @@
-
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import * as SecureStore from "expo-secure-store";
 
 type QueueItem = {
   resolve: (value: string | PromiseLike<string>) => void;
   reject: (error?: any) => void;
 };
 
-const baseURL = 'http://192.168.100.7:8000/api/';
-
+const baseURL = "http://192.168.100.7:8000/api/";
 
 const api = axios.create({
   baseURL,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { "Content-Type": "application/json" },
 });
 
 let isRefreshing = false;
@@ -30,9 +28,10 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+// ✅ Attach Access Token Automatically
 api.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('access_token');
+    const token = await SecureStore.getItemAsync("access_token");
     if (token && config.headers) {
       (config.headers as any).Authorization = `Bearer ${token}`;
     }
@@ -41,18 +40,21 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ✅ Handle 401 Errors & Refresh Token Automatically
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
 
+    // If Unauthorized → Try Refreshing Token
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
+        // Wait until refresh is done, then retry
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
           if (originalRequest.headers) {
-            (originalRequest.headers as any).Authorization = 'Bearer ' + token;
+            (originalRequest.headers as any).Authorization = `Bearer ${token}`;
           }
           return api(originalRequest);
         });
@@ -62,28 +64,32 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await SecureStore.getItemAsync('refresh_token');
-        if (!refreshToken) throw new Error('No refresh token');
+        const refreshToken = await SecureStore.getItemAsync("refresh_token");
+        if (!refreshToken) throw new Error("No refresh token available");
 
+        // ✅ Use axios directly to prevent infinite loops
         const response = await axios.post(`${baseURL}token/refresh/`, {
           refresh: refreshToken,
         });
 
         const newAccessToken = response.data.access;
-        await SecureStore.setItemAsync('access_token', newAccessToken);
-        api.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
+
+        // Save new access token
+        await SecureStore.setItemAsync("access_token", newAccessToken);
+        api.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
 
         processQueue(null, newAccessToken);
 
         if (originalRequest.headers) {
-          (originalRequest.headers as any).Authorization = 'Bearer ' + newAccessToken;
+          (originalRequest.headers as any).Authorization = `Bearer ${newAccessToken}`;
         }
+
         return api(originalRequest);
       } catch (err) {
         processQueue(err as AxiosError, null);
-        await SecureStore.deleteItemAsync('access_token');
-        await SecureStore.deleteItemAsync('refresh_token');
-        // Optionally redirect to login
+        await SecureStore.deleteItemAsync("access_token");
+        await SecureStore.deleteItemAsync("refresh_token");
+        console.log("Session expired. Please log in again.");
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

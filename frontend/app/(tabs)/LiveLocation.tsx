@@ -5,7 +5,7 @@ import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import MyButton from '@/components/MyButton';
 import * as SecureStore from 'expo-secure-store';
-import api from '@/constants/apiConfig'; // Use axios instance
+import api from '@/constants/apiConfig'; // Axios instance
 
 type Coords = {
   latitude: number;
@@ -20,26 +20,28 @@ const LiveLocation = () => {
 
   useEffect(() => {
     (async () => {
-      const storedToken = await SecureStore.getItemAsync('userToken');
-      if (!storedToken) {
-        Alert.alert('Authentication Error', 'You are not logged in. Please login again.');
-        router.replace('/OTP'); // Redirect to login/OTP
-        return;
+      try {
+        const storedToken = await SecureStore.getItemAsync('access_token'); // ✅ FIXED KEY
+        if (!storedToken) {
+          Alert.alert('Authentication Error', 'You are not logged in. Please login again.');
+          router.replace('/OTP');
+          return;
+        }
+        setToken(storedToken);
+
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Permission to access location was denied');
+          return;
+        }
+
+        const { coords } = await Location.getCurrentPositionAsync({});
+        setLocation({ latitude: coords.latitude, longitude: coords.longitude });
+        setLoading(false);
+      } catch (err) {
+        console.error('Location Error:', err);
+        Alert.alert('Error', 'Unable to fetch location');
       }
-      setToken(storedToken);
-
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Permission to access location was denied');
-        return;
-      }
-
-      const {
-        coords: { latitude, longitude },
-      } = await Location.getCurrentPositionAsync({});
-
-      setLocation({ latitude, longitude });
-      setLoading(false);
     })();
   }, [router]);
 
@@ -50,11 +52,11 @@ const LiveLocation = () => {
     }
 
     try {
-      await api.post(
-        '/save-location/',
+      await api.patch(
+        '/driver/update-location/', // ✅ FIXED API URL
         {
-          latitude: location.latitude,
-          longitude: location.longitude,
+          current_latitude: location.latitude,
+          current_longitude: location.longitude,
         },
         {
           headers: {
@@ -67,7 +69,10 @@ const LiveLocation = () => {
       router.push('/(tabs)/Client/Ride/RideDetails');
     } catch (error: any) {
       console.log('Error saving location:', error.response?.data || error.message);
-      Alert.alert('Error', 'Failed to save location');
+      Alert.alert(
+        'Error',
+        error.response?.data?.error || 'Failed to save location'
+      );
     }
   };
 

@@ -15,8 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import api from '@/constants/apiConfig'; // axios instance
-
+import axios from 'axios'; // Import axios
 import InputButton from '@/components/Inputbutton';
 import MyButton from '@/components/MyButton';
 import BackgroundOne from '../../../components/BackgroundDesign';
@@ -24,10 +23,9 @@ import Colors from '@/constants/Color';
 
 const DriverProfile: React.FC = () => {
   const router = useRouter();
-
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
+  
   // Profile fields
   const [name, setName] = useState('');
   const [cnic, setCnic] = useState('');
@@ -37,7 +35,7 @@ const DriverProfile: React.FC = () => {
   const [licenseNumber, setLicenseNumber] = useState('');
   const [licenseExpiry, setLicenseExpiry] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
-
+  
   // Token load on mount
   useEffect(() => {
     const loadToken = async () => {
@@ -49,6 +47,29 @@ const DriverProfile: React.FC = () => {
           return;
         }
         setToken(storedToken);
+        
+        // Load existing driver profile data
+        try {
+          const response = await axios.get('http://192.168.100.7:8000/api/driver-profile/', {
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+            },
+          });
+          
+          const profileData = response.data;
+          setName(profileData.full_name || '');
+          setCnic(profileData.cnic || '');
+          setAge(profileData.age ? profileData.age.toString() : '');
+          setPhone(profileData.phone_number || '');
+          setAddress(profileData.address || '');
+          setLicenseNumber(profileData.driving_license || '');
+          setLicenseExpiry(profileData.license_expiry || '');
+          if (profileData.dp) {
+            setProfileImage(`http://192.168.100.7:8000${profileData.dp}`);
+          }
+        } catch (error) {
+          console.log('No existing profile found or error loading profile:', error);
+        }
       } catch (err) {
         Alert.alert('Error', 'Failed to fetch authentication token.');
       } finally {
@@ -57,7 +78,7 @@ const DriverProfile: React.FC = () => {
     };
     loadToken();
   }, [router]);
-
+  
   // CNIC Formatter with dashes (12345-1234567-1)
   const formatCNIC = (text: string) => {
     const digits = text.replace(/\D/g, '');
@@ -65,11 +86,11 @@ const DriverProfile: React.FC = () => {
     if (digits.length <= 12) return digits.slice(0, 5) + '-' + digits.slice(5);
     return digits.slice(0, 5) + '-' + digits.slice(5, 12) + '-' + digits.slice(12, 13);
   };
-
+  
   const onChangeCNIC = (text: string) => {
     setCnic(formatCNIC(text));
   };
-
+  
   // Phone number formatter (+92 prefix, remove leading zero)
   const formatPhoneNumber = (text: string) => {
     let digits = text.replace(/\D/g, '');
@@ -77,21 +98,20 @@ const DriverProfile: React.FC = () => {
     if (!digits.startsWith('92')) digits = '92' + digits;
     return '+' + digits;
   };
-
+  
   const onChangePhone = (text: string) => {
     setPhone(formatPhoneNumber(text));
   };
-
+  
   // Handle selecting profile image
   const handleIconPress = async () => {
     const mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-
     if (!mediaPermission.granted || !cameraPermission.granted) {
       Alert.alert('Permission Denied', 'Allow camera and gallery access.');
       return;
     }
-
+    
     Alert.alert('Select Image', 'Choose an option', [
       {
         text: 'Camera',
@@ -122,14 +142,14 @@ const DriverProfile: React.FC = () => {
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
-
+  
   const handleSaveProfile = async () => {
     if (!token) {
       Alert.alert('Error', 'Authentication token is missing. Please log in again.');
-      router.replace('/OTP');
+      router.replace('/(tabs)/LiveLocation');
       return;
     }
-
+    
     try {
       const formData = new FormData();
       formData.append('full_name', name);
@@ -139,39 +159,40 @@ const DriverProfile: React.FC = () => {
       formData.append('address', address);
       formData.append('license_number', licenseNumber);
       formData.append('license_expiry', licenseExpiry);
-
+      
       if (profileImage) {
         const filename = profileImage.split('/').pop() ?? 'profile.jpg';
         const ext = filename.includes('.') ? filename.split('.').pop()! : 'jpg';
         const type = `image/${ext}`;
-
         formData.append('dp', {
           uri: profileImage,
           name: filename,
           type,
         } as any);
       }
-
+      
       // Updated API endpoint from /user-profile/ to /driver-profile/
-      await api.put('/driver-profile/', formData, {
+      await axios.put('http://192.168.100.7:8000/api/driver-profile/', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
-
+      
       Alert.alert('Success', 'Profile saved successfully');
-      router.push('/(tabs)/GrantLocation');
+      
+      // Navigate to the live location screen in the tabs folder
+      router.push('/(tabs)/LiveLocation');
     } catch (err: any) {
-      const message = err.response?.data?.message || 'Failed to save profile';
+      const message = err.response?.data?.message || err.response?.data?.error || 'Failed to save profile';
       Alert.alert('Error', message);
     }
   };
-
+  
   if (loading) {
     return null; // or a loading spinner while token loads
   }
-
+  
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
@@ -217,7 +238,6 @@ const DriverProfile: React.FC = () => {
               value={licenseExpiry}
               onChangeText={setLicenseExpiry}
             />
-
             <View style={{ marginTop: 40 }}>
               <MyButton title="Save Profile" onPress={handleSaveProfile} />
             </View>

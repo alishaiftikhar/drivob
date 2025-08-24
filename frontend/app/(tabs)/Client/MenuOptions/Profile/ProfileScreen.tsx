@@ -1,186 +1,369 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Alert,
-  StyleSheet,
   View,
+  Text,
+  StyleSheet,
   Image,
-  ScrollView,
-  KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Platform,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  SafeAreaView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import axios from 'axios';
-
-import InputButton from '@/components/Inputbutton';
-import MyButton from '@/components/MyButton';
-import BackgroundOne from '@/components/BackgroundDesign';
+import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import api from '@/constants/apiConfig';
 import Colors from '@/constants/Color';
 
+interface UserType {
+  is_client: boolean;
+  is_driver: boolean;
+  email: string;
+  user_id: number;
+}
 
-const API_BASE_URL = 'http://192.168.43.20:8000/api'; // <-- Make sure this is your backend URL
+interface Profile {
+  dp?: string;
+  dp_url?: string;
+  full_name?: string;
+  phone_number?: string;
+  cnic?: string;
+  address?: string;
+  age?: number;
+  city?: string;
+  status?: string;
+  [key: string]: any;
+}
 
-const ClientProfile = () => {
+const ProfileScreen = () => {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [userType, setUserType] = useState<UserType | null>(null);
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  // Get token from params
-  const token = (params.token as string) || '';
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
-  // Pre-filled if editing, empty if new user
-  const [name, setName] = useState(params.name as string || '');
-  const [cnic, setCnic] = useState(params.cnic as string || '');
-  const [age, setAge] = useState(params.age as string || '');
-  const [phone, setPhone] = useState(params.phone as string || '');
-  const [address, setAddress] = useState(params.address as string || '');
-  const [profileImage, setProfileImage] = useState<string | null>(
-    params.dp as string || null
-  );
-
-  const handleIconPress = async () => {
-    const mediaPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (!mediaPermission.granted || !cameraPermission.granted) {
-      Alert.alert('Permission Denied', 'Allow camera and gallery access.');
-      return;
-    }
-
-    Alert.alert('Select Image', 'Choose an option', [
-      {
-        text: 'Camera',
-        onPress: async () => {
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 1,
-          });
-          if (!result.canceled) {
-            setProfileImage(result.assets[0].uri);
-          }
-        },
-      },
-      {
-        text: 'Gallery',
-        onPress: async () => {
-          const result = await ImagePicker.launchImageLibraryAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 1,
-          });
-          if (!result.canceled) {
-            setProfileImage(result.assets[0].uri);
-          }
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  // Save profile function
-  const handleSaveProfile = async () => {
-    if (!token) {
-      Alert.alert('Error', 'Token is missing');
-      return;
-    }
-
-    const data = {
-      full_name: name,
-      phone_number: phone,
-      cnic: cnic,
-      age: age,
-      address: address,
-      dp: profileImage,
-    };
-
+  const fetchProfile = async () => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/user-profile/`, data, {
+      setLoading(true);
+      const token = await SecureStore.getItemAsync('userToken');
+      if (!token) {
+        Alert.alert('Error', 'Authentication token missing. Please login again.');
+        router.replace('/(tabs)/Login');
+        return;
+      }
+
+      // Fetch user type
+      const userTypeResponse = await api.get('/user-type/', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUserType(userTypeResponse.data);
+
+      // Decide which profile endpoint to use
+      const profileEndpoint = userTypeResponse.data.is_client
+        ? '/user-profile/'
+        : '/driver-profile/';
+
+      const profileResponse = await api.get(profileEndpoint, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      Alert.alert('Success', 'Profile saved successfully');
-    } catch (err: any) {
-      const message = err.response?.data?.message || 'Failed to save profile';
-      Alert.alert('Error', message);
+      if (profileResponse && profileResponse.data) {
+        setProfile(profileResponse.data);
+        setImageError(false);
+      } else {
+        setProfile({
+          full_name: userTypeResponse.data.email?.split('@')[0] || 'User',
+          phone_number: '',
+          address: '',
+          city: '',
+        });
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        Alert.alert('Session Expired', 'Please login again', [
+          { text: 'OK', onPress: () => router.replace('/(tabs)/Login') },
+        ]);
+        return;
+      }
+      setProfile({
+        full_name: 'User',
+        phone_number: '',
+        address: '',
+        city: '',
+      });
+      Alert.alert('Error', 'Failed to load profile data. Please try again later.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-      >
-        <BackgroundOne
-          imageSource={
-            <TouchableOpacity onPress={handleIconPress}>
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.profileImage} />
-              ) : (
-                <Ionicons name="person-circle-outline" size={120} color="white" />
-              )}
-            </TouchableOpacity>
-          }
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <InputButton placeholder="Full Name" value={name} onChangeText={setName} />
-            <InputButton
-              placeholder="CNIC"
-              value={cnic}
-              onChangeText={setCnic}
-              keyboardType="numeric"
-            />
-            <InputButton
-              placeholder="Age"
-              value={age}
-              onChangeText={setAge}
-              keyboardType="numeric"
-            />
-            <InputButton
-              placeholder="Phone Number"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-            <InputButton
-              placeholder="Address"
-              value={address}
-              onChangeText={setAddress}
-            />
+  const handleProfileOptions = () => setOptionsModalVisible(true);
 
-            <View style={{ marginTop: 40 }}>
-              <MyButton title="Save Profile" onPress={handleSaveProfile} />
+  const handleViewProfile = () => {
+    setOptionsModalVisible(false);
+    router.push({
+      pathname: '/(tabs)/Client/MenuOptions/Profile/ViewClientProfile',
+      params: {
+        profileData: JSON.stringify(profile),
+        userType: JSON.stringify(userType),
+      },
+    });
+  };
+
+  const handleEditProfile = () => {
+    setOptionsModalVisible(false);
+    router.push({
+      pathname: '/(tabs)/Client/MenuOptions/Profile/EditProfile',
+      params: {
+        profileData: JSON.stringify(profile),
+        userType: JSON.stringify(userType),
+      },
+    });
+  };
+
+  const handleCancel = () => setOptionsModalVisible(false);
+
+  const getUserStatus = () => {
+    if (userType?.is_client) return 'Active Client';
+    if (userType?.is_driver) return profile?.status || 'Driver';
+    return 'User';
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading Profile...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  const getUserInitials = () => {
+    if (profile?.full_name) {
+      const names = profile.full_name.trim().split(' ');
+      return (names[0][0] + (names[1]?.[0] || '')).toUpperCase();
+    }
+    return 'U';
+  };
+
+  const getProfileImageUrl = () => {
+    if (profile?.dp_url && !imageError) {
+      return profile.dp_url;
+    }
+    if (profile?.dp && !imageError) {
+      if (profile.dp.startsWith('http')) {
+        return profile.dp;
+      } else {
+        const baseUrl = 'http://192.168.100.7:8000';
+        return `${baseUrl}/media/${profile.dp}`;
+      }
+    }
+    return null;
+  };
+
+  const profileImageUrl = getProfileImageUrl();
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.profileImageContainer}>
+        <View style={[styles.profileCircle, { borderColor: Colors.primary }]}>
+          {profileImageUrl ? (
+            <Image
+              source={{ uri: profileImageUrl }}
+              style={styles.profileImage}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <View style={styles.defaultProfileContainer}>
+              <Text style={[styles.defaultProfileText, { color: Colors.primary }]}>
+                {getUserInitials()}
+              </Text>
             </View>
-          </ScrollView>
-        </BackgroundOne>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+          )}
+        </View>
+      </View>
+
+      {/* Profile Information */}
+      <View style={styles.profileInfoText}>
+        <Text style={styles.infoText}>
+          <Text style={styles.infoLabel}>Name: </Text>
+          {profile?.full_name || 'Not provided'}
+        </Text>
+        <Text style={styles.infoText}>
+          <Text style={styles.infoLabel}>Phone: </Text>
+          {profile?.phone_number || 'Not provided'}
+        </Text>
+        <Text style={styles.infoText}>
+          <Text style={styles.infoLabel}>Status: </Text>
+          {getUserStatus()}
+        </Text>
+      </View>
+
+      {/* Profile Options Button */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.profileOptionsButton} onPress={handleProfileOptions}>
+          <Text style={styles.buttonText}>Profile Options</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Options Modal */}
+      <Modal
+        visible={optionsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Profile Options</Text>
+
+            <TouchableOpacity style={styles.optionButton} onPress={handleViewProfile}>
+              <Text style={styles.optionText}>View Full Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.optionButton} onPress={handleEditProfile}>
+              <Text style={styles.optionText}>Edit Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 };
 
-export default ClientProfile;
-
 const styles = StyleSheet.create({
-  scrollContainer: {
+  container: {
+    flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 100,
     alignItems: 'center',
-    paddingTop: 0,
-    paddingBottom: 200,
-    gap: 2,
   },
-  profileImage: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: Colors.primary,
+    marginTop: 10,
+    fontSize: 16,
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+    marginBottom: 70,
+  },
+  profileCircle: {
     width: 150,
     height: 150,
     borderRadius: 75,
+    borderWidth: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+  },
+  defaultProfileContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  defaultProfileText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+  },
+  profileInfoText: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  infoText: {
+    fontSize: 18,
+    marginBottom: 8,
+    textAlign: 'center',
+    color: 'black',
+  },
+  infoLabel: {
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  buttonContainer: {
+    width: '90%',
+    marginTop: 20,
+  },
+  profileOptionsButton: {
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 25,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: Colors.primary,
+  },
+  optionButton: {
+    paddingVertical: 15,
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  cancelButton: {
+    marginTop: 15,
+    paddingVertical: 15,
+    width: '100%',
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ff3b30',
   },
 });
+
+export default ProfileScreen;

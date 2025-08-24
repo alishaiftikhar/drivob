@@ -2,30 +2,51 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  StyleSheet,
   Alert,
   Keyboard,
-  StyleSheet,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView,
   ScrollView,
+  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import BackgroundOne from '../../components/BackgroundDesign';
-import MyButton from '../../components/MyButton';
 import InputButton from '@/components/Inputbutton';
+import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
+import { useRouter } from 'expo-router';
 import { validateEmail } from '@/components/Validation';
+import api from '@/constants/apiConfig';
 
 const EnterEmail = () => {
-  const [email, setEmail] = useState('');
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSendOTP = async () => {
     const emailError = validateEmail(email);
-    if (emailError) return Alert.alert(emailError);
-
-    router.push('/OTP');
+    if (emailError) return Alert.alert('Error', emailError);
+    
+    setLoading(true);
+    
+    try {
+      const response = await api.post('/send-otp/', { email });
+      if (response.data.success) {
+        Alert.alert('Success', 'OTP sent to your email!');
+        // Navigate to OTP screen with 'from' parameter set to 'forgot'
+        router.push({
+          pathname: '/OTP',
+          params: { email, from: 'forgot' }
+        });
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to send OTP');
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Failed to send OTP';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,29 +56,28 @@ const EnterEmail = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <BackgroundOne text="Email">
+        <BackgroundOne text="Forgot Password">
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Email Input with padding */}
+            <Text style={styles.infoText}>
+              Enter your email address and we'll send you an OTP to reset your password.
+            </Text>
             <InputButton
-              placeholder="Enter your registered Email"
+              placeholder="Enter Email"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
             />
-
-            {/* Button with spacing */}
-            <View style={{ marginTop: 40 }}>
-              <MyButton title="Submit" onPress={handleSubmit} />
+            <View style={styles.buttonArea}>
+              <MyButton 
+                title={loading ? "Sending..." : "Send OTP"} 
+                onPress={handleSendOTP} 
+                disabled={loading}
+              />
             </View>
-
-            {/* Info Text */}
-            <Text style={styles.infoText}>
-              We’ll send you an OTP to reset your password
-            </Text>
           </ScrollView>
         </BackgroundOne>
       </KeyboardAvoidingView>
@@ -70,17 +90,21 @@ export default EnterEmail;
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 200,
-    gap: 25,
+    paddingTop: 0,
+    paddingBottom: 160,
+    gap: 20,
   },
   infoText: {
-    marginTop: 10,
     fontSize: 16,
-    color: Colors.primary,
+    color: Colors.text,
     textAlign: 'center',
-    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
+  buttonArea: {
+    marginTop: 20,
+    width: '100%',
   },
 });

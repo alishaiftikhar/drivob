@@ -11,60 +11,70 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-
 import BackgroundOne from '../../components/BackgroundDesign';
 import InputButton from '@/components/Inputbutton';
 import MyButton from '@/components/MyButton';
 import Colors from '@/constants/Color';
 import { useRouter } from 'expo-router';
 import { validateEmail, validatePassword } from '@/components/Validation';
-import axios from 'axios';
+import api from '@/constants/apiConfig'; // Import the apiConfig instead of axios
 import * as SecureStore from 'expo-secure-store';
-
-const API_BASE_URL = 'http://192.168.43.20:8000/api';
 
 const Login = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
-
+    
     if (emailError) return Alert.alert('Error', emailError);
     if (passwordError) return Alert.alert('Error', passwordError);
-
+    
+    setLoading(true);
+    
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/login/`,
-        { username: email, password }, // Use 'username' as key for Django SimpleJWT
+      // Use the imported api instance instead of axios directly
+      const response = await api.post(
+        '/login/', // No need for API_BASE_URL as it's already configured in apiConfig
+        { email, password }, // Using email instead of username
         {
           headers: { 'Content-Type': 'application/json' },
         }
       );
-
+      
       console.log('Login response:', response.data);
-
+      
       if (response.status === 200) {
+        // Save tokens securely
+        await SecureStore.setItemAsync('access_token', response.data.access);
+        await SecureStore.setItemAsync('refresh_token', response.data.refresh);
+        
+        // Save user info
+        await SecureStore.setItemAsync('user_email', email);
+        await SecureStore.setItemAsync('user_id', response.data.user_id?.toString() || '');
+        
         Alert.alert('Success', 'Login successful');
-
-        // Save access token securely
-        if (response.data.access) {
-          await SecureStore.setItemAsync('userToken', response.data.access);
-        }
-
-        // Navigate to home or appropriate screen after login
-        router.push('/');
+        
+        // Navigate to GrantLocation screen with type assertion
+        router.push('/(tabs)/GrantLocation' as any);
       } else {
         Alert.alert('Error', response.data.message || 'Login failed');
       }
     } catch (err: any) {
       console.log('Login error:', err.response?.data || err.message);
-      const message =
-        err.response?.data?.message || 'Something went wrong during login';
-      Alert.alert('Error', message);
+      
+      if (err.response?.status === 401) {
+        Alert.alert('Login Failed', 'Invalid email or password');
+      } else {
+        const message = err.response?.data?.message || 'Something went wrong during login';
+        Alert.alert('Error', message);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,7 +97,6 @@ const Login = () => {
               onChangeText={setEmail}
               keyboardType="email-address"
             />
-
             <InputButton
               placeholder="Password"
               value={password}
@@ -97,15 +106,16 @@ const Login = () => {
               isSecure={!showPassword}
               onToggle={() => setShowPassword(!showPassword)}
             />
-
             <TouchableOpacity onPress={() => router.push('/EnterEmail')}>
               <Text style={styles.forgetText}>Forget Password?</Text>
             </TouchableOpacity>
-
             <View style={{ marginTop: 40 }}>
-              <MyButton title="Login" onPress={handleLogin} />
+              <MyButton 
+                title={loading ? "Logging in..." : "Login"} 
+                onPress={handleLogin} 
+                disabled={loading}
+              />
             </View>
-
             <TouchableOpacity onPress={() => router.push('/Signup')}>
               <Text style={styles.signupText}>Create New Account</Text>
             </TouchableOpacity>
